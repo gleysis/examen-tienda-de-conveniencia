@@ -100,7 +100,6 @@ export class Layout {
       '/inventory': 'Inventario',
       '/reports': 'Reportes',
       '/pos': 'Área de Venta',
-      '/customers': 'Clientes',
       '/suppliers': 'Proveedores',
       '/returns': 'Devoluciones',
       '/discounts': 'Descuentos',

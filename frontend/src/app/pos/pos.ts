@@ -6,6 +6,7 @@ import { filter } from 'rxjs/operators';
 import { ProductService } from '../services/product';
 import { SaleService } from '../services/sale';
 import { DiscountService } from '../services/discount';
+import { SystemSettingService } from '../services/system-setting';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 
@@ -54,10 +55,32 @@ export class Pos implements OnInit, OnDestroy {
   amountReceived: number = 0;
   change: number = 0;
 
+  showReceipt = false;
+  receipt: {
+    invoice_number: string;
+    created_at: string;
+    cashier: string;
+    items: { name: string; quantity: number; unit_price: number; subtotal: number }[];
+    subtotal: number;
+    discount: number;
+    tax: number;
+    total: number;
+    payment_method: string;
+    amount_received: number;
+    change: number;
+  } | null = null;
+
+  storeInfo = {
+    name: 'Tienda Express',
+    address: '',
+    phone: '',
+  };
+
   constructor(
     private productService: ProductService,
     private saleService: SaleService,
     private discountService: DiscountService,
+    private systemSettingService: SystemSettingService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
     private router: Router
@@ -68,6 +91,7 @@ export class Pos implements OnInit, OnDestroy {
   ngOnInit(): void {
     console.log('POS ngOnInit called');
     this.loadProducts();
+    this.loadStoreInfo();
 
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
@@ -81,6 +105,23 @@ export class Pos implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     console.log('POS ngOnDestroy called');
+  }
+
+  loadStoreInfo(): void {
+    this.systemSettingService.getPublicSettings().subscribe({
+      next: (response) => {
+        const settings = response.settings || {};
+        this.storeInfo = {
+          name: settings['store_name'] || 'Tienda Express',
+          address: settings['store_address'] || '',
+          phone: settings['store_phone'] || '',
+        };
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // Keep default store info if public settings are unavailable.
+      },
+    });
   }
 
   loadProducts(): void {
@@ -118,7 +159,15 @@ export class Pos implements OnInit, OnDestroy {
       this.productService.getProducts({ search: this.searchQuery, per_page: 100 }).subscribe({
         next: (response) => {
           console.log('Search results:', response);
-          this.products = response.data || [];
+          const results = response.data || [];
+          if (results.length === 1) {
+            // Exact match (e.g. barcode scan): add straight to the cart.
+            this.addToCart(results[0]);
+            this.searchQuery = '';
+            this.loadProducts();
+            return;
+          }
+          this.products = results;
         },
         error: (error) => {
           console.error('Error searching products:', error);
@@ -215,27 +264,49 @@ export class Pos implements OnInit, OnDestroy {
   clearCart(): void {
     if (this.cart.length > 0) {
       if (confirm('¿Estás seguro de cancelar la venta actual? Todos los productos serán eliminados del carrito.')) {
-        this.cart = [];
-        this.saleData = {
-          payment_method: 'cash',
-          discount: 0,
-          tax: 0,
-          notes: '',
-        };
-        this.discountCode = '';
-        this.discountAmount = 0;
-        this.discountValid = false;
-        this.amountReceived = 0;
-        this.change = 0;
+        this.resetSaleState();
         this.errorMessage = 'Venta cancelada';
         this.cdr.detectChanges();
-        
+
         setTimeout(() => {
           this.errorMessage = '';
           this.cdr.detectChanges();
         }, 3000);
       }
     }
+  }
+
+  private resetSaleState(): void {
+    this.cart = [];
+    this.saleData = {
+      payment_method: 'cash',
+      discount: 0,
+      tax: 0,
+      notes: '',
+    };
+    this.discountCode = '';
+    this.discountAmount = 0;
+    this.discountValid = false;
+    this.amountReceived = 0;
+    this.change = 0;
+  }
+
+  printReceipt(): void {
+    window.print();
+  }
+
+  closeReceipt(): void {
+    this.showReceipt = false;
+    this.receipt = null;
+  }
+
+  getPaymentMethodLabel(method: string): string {
+    const labels: Record<string, string> = {
+      cash: 'Efectivo',
+      card: 'Tarjeta',
+      transfer: 'Transferencia',
+    };
+    return labels[method] || method;
   }
 
   validateDiscountCode(): void {
@@ -308,8 +379,26 @@ export class Pos implements OnInit, OnDestroy {
     this.saleService.createSale(salePayload).subscribe({
       next: (response) => {
         if (response.sale) {
-          alert('Venta completada exitosamente.\nFactura: ' + response.sale.invoice_number + '\nTotal: $' + this.total.toFixed(2));
-          this.clearCart();
+          this.receipt = {
+            invoice_number: response.sale.invoice_number,
+            created_at: response.sale.created_at || new Date().toISOString(),
+            cashier: response.sale.user?.name || this.user?.name || '',
+            items: this.cart.map((item) => ({
+              name: item.product.name,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              subtotal: item.subtotal,
+            })),
+            subtotal: this.subtotal,
+            discount: this.saleData.discount,
+            tax: this.saleData.tax,
+            total: this.total,
+            payment_method: this.saleData.payment_method,
+            amount_received: this.amountReceived,
+            change: this.change,
+          };
+          this.showReceipt = true;
+          this.resetSaleState();
           this.loadProducts();
         } else if (response.error) {
           this.errorMessage = response.error;

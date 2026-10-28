@@ -89,11 +89,11 @@ class CashRegister extends Model
     public function addSale(float $amount, string $paymentMethod): void
     {
         $this->increment('total_sales', $amount);
-        $this->increment('current_balance', $amount);
 
         switch ($paymentMethod) {
             case 'cash':
                 $this->increment('cash_sales', $amount);
+                $this->increment('current_balance', $amount);
                 break;
             case 'card':
                 $this->increment('card_sales', $amount);

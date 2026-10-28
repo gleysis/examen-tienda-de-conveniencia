@@ -9,7 +9,6 @@ interface ReturnRefund {
   sale_id: number;
   sale_item_id: number;
   product_id: number;
-  customer_id: number | null;
   user_id: number;
   quantity: number;
   refund_amount: number;

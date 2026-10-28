@@ -186,4 +186,54 @@
       </div>
     </div>
   </div>
+
+  <!-- Recibo de venta -->
+  <div class="receipt-overlay" *ngIf="showReceipt && receipt" (click)="closeReceipt()">
+    <div class="receipt-modal" (click)="$event.stopPropagation()">
+      <div class="receipt-print">
+        <div class="receipt-header">
+          <h2>{{ storeInfo.name }}</h2>
+          <p *ngIf="storeInfo.address">{{ storeInfo.address }}</p>
+          <p *ngIf="storeInfo.phone">Tel: {{ storeInfo.phone }}</p>
+        </div>
+        <div class="receipt-meta">
+          <p><strong>Factura:</strong> {{ receipt.invoice_number }}</p>
+          <p><strong>Fecha:</strong> {{ receipt.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
+          <p><strong>Atendido por:</strong> {{ receipt.cashier }}</p>
+        </div>
+        <table class="receipt-items">
+          <thead>
+            <tr>
+              <th>Cant</th>
+              <th>Producto</th>
+              <th class="text-right">Precio</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of receipt.items">
+              <td>{{ item.quantity }}</td>
+              <td>{{ item.name }}</td>
+              <td class="text-right">${{ item.unit_price.toFixed(2) }}</td>
+              <td class="text-right">${{ item.subtotal.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="receipt-totals">
+          <div class="receipt-row"><span>Subtotal:</span><span>${{ receipt.subtotal.toFixed(2) }}</span></div>
+          <div class="receipt-row" *ngIf="receipt.discount > 0"><span>Descuento:</span><span>-${{ receipt.discount.toFixed(2) }}</span></div>
+          <div class="receipt-row" *ngIf="receipt.tax > 0"><span>Impuesto:</span><span>+${{ receipt.tax.toFixed(2) }}</span></div>
+          <div class="receipt-row receipt-total"><span>TOTAL</span><span>${{ receipt.total.toFixed(2) }}</span></div>
+          <div class="receipt-row"><span>Pago:</span><span>{{ getPaymentMethodLabel(receipt.payment_method) }}</span></div>
+          <div class="receipt-row" *ngIf="receipt.payment_method === 'cash'"><span>Recibido:</span><span>${{ receipt.amount_received.toFixed(2) }}</span></div>
+          <div class="receipt-row" *ngIf="receipt.payment_method === 'cash'"><span>Cambio:</span><span>${{ receipt.change.toFixed(2) }}</span></div>
+        </div>
+        <p class="receipt-thanks">¡Gracias por su compra!</p>
+      </div>
+      <div class="receipt-actions">
+        <button class="btn-print" (click)="printReceipt()">Imprimir</button>
+        <button class="btn-close-receipt" (click)="closeReceipt()">Cerrar</button>
+      </div>
+    </div>
+  </div>
 </app-layout>

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CloseCashRegisterRequest;
+use App\Http\Requests\OpenCashRegisterRequest;
 use App\Http\Requests\StoreCashRegisterRequest;
 use App\Http\Requests\UpdateCashRegisterRequest;
 use App\Http\Resources\CashRegisterResource;
@@ -63,15 +65,11 @@ class CashRegisterController extends Controller
         ];
     }
 
-    public function open(Request $request, CashRegister $cashRegister): array
+    public function open(OpenCashRegisterRequest $request, CashRegister $cashRegister): array
     {
         if ($cashRegister->status === 'open') {
             abort(422, 'Esta caja registradora ya está abierta');
         }
-
-        $request->validate([
-            'opening_balance' => 'required|numeric|min:0',
-        ]);
 
         $cashRegister->open($request->opening_balance, auth()->id());
 
@@ -81,15 +79,11 @@ class CashRegisterController extends Controller
         ];
     }
 
-    public function close(Request $request, CashRegister $cashRegister): array
+    public function close(CloseCashRegisterRequest $request, CashRegister $cashRegister): array
     {
         if ($cashRegister->status === 'closed') {
             abort(422, 'Esta caja registradora ya está cerrada');
         }
-
-        $request->validate([
-            'actual_closing' => 'required|numeric|min:0',
-        ]);
 
         $cashRegister->close($request->actual_closing);
 

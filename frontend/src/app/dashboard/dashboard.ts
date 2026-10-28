@@ -96,10 +96,6 @@ export class Dashboard implements OnInit, OnDestroy {
     return this.permissionService.hasPermission('reports.view');
   }
 
-  get canViewCustomers(): boolean {
-    return this.permissionService.hasPermission('customers.view');
-  }
-
   get canViewSuppliers(): boolean {
     return this.permissionService.hasPermission('suppliers.view');
   }

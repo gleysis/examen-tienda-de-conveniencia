@@ -543,3 +543,124 @@
     max-height: 400px;
   }
 }
+
+.receipt-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.receipt-modal {
+  background: #fff;
+  border-radius: 8px;
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 320px;
+  padding: 16px;
+}
+
+.receipt-print {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #000;
+}
+
+.receipt-header {
+  text-align: center;
+  border-bottom: 1px dashed #000;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.receipt-header h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.receipt-header p {
+  margin: 0;
+  font-size: 11px;
+}
+
+.receipt-meta {
+  margin-bottom: 8px;
+}
+
+.receipt-meta p {
+  margin: 2px 0;
+}
+
+.receipt-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+.receipt-items th,
+.receipt-items td {
+  padding: 2px 4px;
+  text-align: left;
+}
+
+.receipt-items thead {
+  border-top: 1px dashed #000;
+  border-bottom: 1px dashed #000;
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+.receipt-totals {
+  border-top: 1px dashed #000;
+  padding-top: 8px;
+}
+
+.receipt-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0;
+}
+
+.receipt-total {
+  font-weight: bold;
+  font-size: 14px;
+  border-top: 1px dashed #000;
+  padding-top: 4px;
+  margin-top: 4px;
+}
+
+.receipt-thanks {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 11px;
+}
+
+.receipt-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.btn-print {
+  flex: 1;
+  padding: 10px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-close-receipt {
+  flex: 1;
+  padding: 10px;
+  background: #e5e7eb;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}

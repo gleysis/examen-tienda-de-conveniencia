@@ -90,10 +90,13 @@ class SaleController extends Controller
             $lastNumber = $lastSale ? (int) substr($lastSale->invoice_number, 4) : 0;
             $invoiceNumber = 'INV-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
+            $cashRegisterId = $request->cash_register_id
+                ?? CashRegister::where('user_id', auth()->id())->open()->value('id');
+
             $sale = Sale::create([
                 'invoice_number' => $invoiceNumber,
                 'user_id' => auth()->id(),
-                'cash_register_id' => $request->cash_register_id,
+                'cash_register_id' => $cashRegisterId,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'discount' => $discount,
@@ -103,11 +106,8 @@ class SaleController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            if ($request->cash_register_id) {
-                $cashRegister = CashRegister::find($request->cash_register_id);
-                if ($cashRegister) {
-                    $cashRegister->addSale($total, $request->payment_method);
-                }
+            if ($cashRegisterId) {
+                CashRegister::find($cashRegisterId)?->addSale($total, $request->payment_method);
             }
 
             foreach ($saleItems as $item) {

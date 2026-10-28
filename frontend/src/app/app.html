@@ -1,1 +1,13 @@
 <router-outlet />
+
+<div class="toast-container">
+  <div
+    *ngFor="let notification of notifications()"
+    class="toast"
+    [class.toast-error]="notification.type === 'error'"
+    [class.toast-success]="notification.type === 'success'"
+    (click)="dismiss(notification.id)"
+  >
+    {{ notification.message }}
+  </div>
+</div>

@@ -18,13 +18,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'Editar usuarios', 'slug' => 'users.edit', 'description' => 'Editar usuarios existentes'],
             ['name' => 'Eliminar usuarios', 'slug' => 'users.delete', 'description' => 'Eliminar usuarios'],
 
-            // Customers
-            ['name' => 'Ver clientes', 'slug' => 'customers.view', 'description' => 'Ver lista de clientes'],
-            ['name' => 'Crear clientes', 'slug' => 'customers.create', 'description' => 'Crear nuevos clientes'],
-            ['name' => 'Editar clientes', 'slug' => 'customers.edit', 'description' => 'Editar clientes existentes'],
-            ['name' => 'Eliminar clientes', 'slug' => 'customers.delete', 'description' => 'Eliminar clientes'],
-            ['name' => 'Gestionar puntos de lealtad', 'slug' => 'customers.loyalty', 'description' => 'Agregar puntos de lealtad'],
-
             // Suppliers
             ['name' => 'Ver proveedores', 'slug' => 'suppliers.view', 'description' => 'Ver lista de proveedores'],
             ['name' => 'Crear proveedores', 'slug' => 'suppliers.create', 'description' => 'Crear nuevos proveedores'],
@@ -113,9 +106,8 @@ class PermissionSeeder extends Seeder
         }
 
         if ($cashierRole) {
-            // Cashier can view customers, create sales, view inventory, use POS
+            // Cashier can create sales, view inventory, use POS
             $cashierPermissions = Permission::whereIn('slug', [
-                'customers.view',
                 'sales.view',
                 'sales.create',
                 'inventory.view',

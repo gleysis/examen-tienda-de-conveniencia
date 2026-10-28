@@ -96,3 +96,32 @@ textarea {
   background: var(--color-gray-400);
 }
 
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-overlay {
+    position: static !important;
+    background: none !important;
+  }
+
+  .receipt-print,
+  .receipt-print * {
+    visibility: visible;
+  }
+
+  .receipt-print {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .receipt-actions {
+    display: none !important;
+  }
+}
