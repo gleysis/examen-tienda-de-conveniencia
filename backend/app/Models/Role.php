@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use Database\Factories\RoleFactory;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Hidden(['pivot'])]
 class Role extends Model
 {
+    /** @use HasFactory<RoleFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'slug',

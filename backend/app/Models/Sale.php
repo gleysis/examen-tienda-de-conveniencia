@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Database\Factories\SaleFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Sale extends Model
 {
+    /** @use HasFactory<SaleFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'invoice_number',
         'user_id',

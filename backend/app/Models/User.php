@@ -39,31 +39,21 @@ class User extends Authenticatable
 
     public function hasRole(string $role): bool
     {
-        return $this->roles()->where('slug', $role)->exists();
+        return $this->roles->contains('slug', $role);
     }
 
     public function hasPermission(string $permission): bool
     {
-        foreach ($this->roles as $role) {
-            if ($role->hasPermission($permission)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->roles
+            ->loadMissing('permissions')
+            ->contains(fn (Role $role) => $role->permissions->contains('slug', $permission));
     }
 
     public function hasAnyPermission(array $permissions): bool
     {
-        foreach ($this->roles as $role) {
-            foreach ($permissions as $permission) {
-                if ($role->hasPermission($permission)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $this->roles
+            ->loadMissing('permissions')
+            ->contains(fn (Role $role) => $role->permissions->whereIn('slug', $permissions)->isNotEmpty());
     }
 
     public function sales()
