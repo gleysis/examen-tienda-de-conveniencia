@@ -6,6 +6,7 @@ import { filter } from 'rxjs/operators';
 import { UserService } from '../services/user';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
+import { PaginationMeta } from '../services/pagination';
 
 interface Role {
   id: number;
@@ -39,6 +40,7 @@ export class Users implements OnInit, OnChanges, OnDestroy {
   users: User[] = [];
   filteredUsers: User[] = [];
   roles: Role[] = [];
+  meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = true;
   errorMessage = '';
   showForm = false;
@@ -89,15 +91,16 @@ export class Users implements OnInit, OnChanges, OnDestroy {
     this.filterUsers();
   }
 
-  loadUsers(): void {
+  loadUsers(page = 1): void {
     this.isLoading = true;
     this.errorMessage = '';
     console.log('Cargando usuarios...');
-    this.userService.getUsers().subscribe({
+    this.userService.getUsers({ page }).subscribe({
       next: (response) => {
         console.log('Usuarios cargados:', response);
-        this.users = response.users || [];
+        this.users = response.data || [];
         this.filteredUsers = this.users;
+        this.meta = response.meta;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -295,6 +298,12 @@ export class Users implements OnInit, OnChanges, OnDestroy {
 
   getUserRoles(user: User): string {
     return user.roles.map((r) => r.name).join(', ');
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.meta.last_page) {
+      this.loadUsers(page);
+    }
   }
 
   filterUsers(): void {

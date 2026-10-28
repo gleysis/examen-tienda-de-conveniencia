@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ReturnRefundService } from '../services/return-refund';
 import { SaleService } from '../services/sale';
+import type { Sale } from '../services/sale';
+import { PaginationMeta } from '../services/pagination';
 
 interface ReturnRefund {
   id: number;
@@ -10,7 +12,6 @@ interface ReturnRefund {
   sale_id: number;
   sale_item_id: number;
   product_id: number;
-  customer_id: number | null;
   user_id: number;
   quantity: number;
   refund_amount: number;
@@ -23,12 +24,6 @@ interface ReturnRefund {
   notes: string | null;
 }
 
-interface Sale {
-  id: number;
-  invoice_number: string;
-  items: any[];
-}
-
 @Component({
   imports: [CommonModule, FormsModule],
   selector: 'app-returns',
@@ -38,6 +33,7 @@ interface Sale {
 export class Returns implements OnInit {
   returns: ReturnRefund[] = [];
   sales: Sale[] = [];
+  meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = false;
   errorMessage = '';
   showForm = false;
@@ -49,7 +45,6 @@ export class Returns implements OnInit {
     sale_id: null as number | null,
     sale_item_id: null as number | null,
     product_id: null as number | null,
-    customer_id: null as number | null,
     quantity: 1,
     refund_amount: 0,
     reason: 'other',
@@ -75,15 +70,16 @@ export class Returns implements OnInit {
     this.loadSales();
   }
 
-  loadReturns(): void {
+  loadReturns(page = 1): void {
     this.isLoading = true;
-    const params: any = {};
+    const params: any = { page };
     if (this.searchQuery) params.search = this.searchQuery;
     if (this.statusFilter) params.status = this.statusFilter;
 
     this.returnRefundService.getReturns(params).subscribe({
       next: (response) => {
-        this.returns = response.returns;
+        this.returns = response.data || [];
+        this.meta = response.meta;
         this.isLoading = false;
       },
       error: (error) => {
@@ -95,14 +91,20 @@ export class Returns implements OnInit {
   }
 
   loadSales(): void {
-    this.saleService.getSales({ status: 'completed' }).subscribe({
+    this.saleService.getSales({ status: 'completed', per_page: 100 }).subscribe({
       next: (response) => {
-        this.sales = response.sales;
+        this.sales = response.data || [];
       },
       error: (error) => {
         console.error('Error loading sales:', error);
       },
     });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.meta.last_page) {
+      this.loadReturns(page);
+    }
   }
 
   onFilter(): void {
@@ -115,7 +117,6 @@ export class Returns implements OnInit {
       sale_id: null,
       sale_item_id: null,
       product_id: null,
-      customer_id: null,
       quantity: 1,
       refund_amount: 0,
       reason: 'other',
@@ -129,7 +130,7 @@ export class Returns implements OnInit {
   onSaleChange(): void {
     const sale = this.sales.find((s) => s.id === this.returnForm.sale_id);
     if (sale) {
-      this.returnForm.customer_id = (sale as any).customer_id;
+      // Sale selected; sale_item/product selection follows from the sale's items.
     }
   }
 

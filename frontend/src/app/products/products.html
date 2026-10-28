@@ -89,6 +89,12 @@
           </tr>
         </tbody>
       </table>
+
+      <div class="pagination" *ngIf="meta.last_page > 1">
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
+        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} productos)</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+      </div>
     </div>
 
     <div class="loading" *ngIf="isLoading">

@@ -3,17 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreInventoryMovementRequest;
+use App\Http\Resources\InventoryMovementResource;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $query = InventoryMovement::with(['product:id,name,sku', 'user:id,name'])
-            ->select('id', 'product_id', 'user_id', 'type', 'quantity', 'previous_stock', 'new_stock', 'reference', 'created_at');
+        $query = InventoryMovement::with(['product:id,name,sku', 'user:id,name']);
 
         if ($request->has('product_id')) {
             $query->where('product_id', $request->product_id);
@@ -31,23 +33,13 @@ class InventoryController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $movements = $query->latest()->get();
+        $movements = $query->latest()->paginate($request->integer('per_page', 15));
 
-        return [
-            'movements' => $movements,
-        ];
+        return InventoryMovementResource::collection($movements);
     }
 
-    public function store(Request $request): array
+    public function store(StoreInventoryMovementRequest $request): array
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'type' => 'required|in:entry,exit',
-            'quantity' => 'required|integer|min:1',
-            'reference' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
-
         return DB::transaction(function () use ($request) {
             $product = Product::findOrFail($request->product_id);
             $previousStock = $product->stock;
@@ -55,9 +47,7 @@ class InventoryController extends Controller
 
             if ($request->type === 'exit') {
                 if ($previousStock < $quantity) {
-                    return [
-                        'error' => "Stock insuficiente. Disponible: {$previousStock}, Solicitado: {$quantity}",
-                    ];
+                    abort(422, "Stock insuficiente. Disponible: {$previousStock}, Solicitado: {$quantity}");
                 }
                 $newStock = $previousStock - $quantity;
             } else {

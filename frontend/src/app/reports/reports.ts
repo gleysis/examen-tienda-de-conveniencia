@@ -11,16 +11,7 @@ import { ReturnRefundService } from '../services/return-refund';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 
-interface Sale {
-  id: number;
-  invoice_number: string;
-  total: number;
-  payment_method: string;
-  status: string;
-  created_at?: string;
-  user?: any;
-  customer?: any;
-}
+import type { Sale } from '../services/sale';
 
 interface ReturnRefund {
   id: number;
@@ -109,14 +100,14 @@ export class Reports implements OnInit, OnDestroy {
   loadSales(): void {
     console.log('Loading sales...');
     this.isLoading = true;
-    const params: any = {};
+    const params: any = { per_page: 100 };
     if (this.dateFilter.date_from) params.date_from = this.dateFilter.date_from;
     if (this.dateFilter.date_to) params.date_to = this.dateFilter.date_to;
 
     this.saleService.getSales(params).subscribe({
       next: (response) => {
         console.log('Sales loaded:', response);
-        this.sales = response.sales as any;
+        this.sales = response.data || [];
         this.calculateSalesSummary();
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -164,14 +155,14 @@ export class Reports implements OnInit, OnDestroy {
 
   loadReturns(): void {
     console.log('Loading returns...');
-    const params: any = {};
+    const params: any = { per_page: 100 };
     if (this.dateFilter.date_from) params.date_from = this.dateFilter.date_from;
     if (this.dateFilter.date_to) params.date_to = this.dateFilter.date_to;
 
     this.returnRefundService.getReturns(params).subscribe({
       next: (response) => {
         console.log('Returns loaded:', response);
-        this.returns = response.returns;
+        this.returns = response.data || [];
         this.calculateReturnsSummary();
         this.cdr.detectChanges();
       },
@@ -193,17 +184,12 @@ export class Reports implements OnInit, OnDestroy {
       return acc;
     }, {} as any);
 
-    const customerSales = this.sales.filter((s) => s.customer).length;
-    const generalSales = totalSales - customerSales;
-
     this.salesSummary = {
       total_sales: totalSales,
       total_revenue: totalRevenue,
       completed_sales: completedSales,
       avg_sale_value: avgSaleValue,
       payment_methods: paymentMethods,
-      customer_sales: customerSales,
-      general_sales: generalSales,
     };
   }
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface Category {
   id: number;
@@ -26,10 +27,6 @@ interface Product {
   is_active: boolean;
 }
 
-interface ProductsResponse {
-  products: Product[];
-}
-
 interface ProductResponse {
   product: Product;
   message: string;
@@ -43,8 +40,8 @@ export class ProductService {
 
   constructor(private http: HttpClient) {}
 
-  getProducts(params?: any): Observable<ProductsResponse> {
-    return this.http.get<ProductsResponse>(`${this.apiUrl}/products`, { params });
+  getProducts(params?: any): Observable<PaginatedResponse<Product>> {
+    return this.http.get<PaginatedResponse<Product>>(`${this.apiUrl}/products`, { params });
   }
 
   getProduct(id: number): Observable<ProductResponse> {

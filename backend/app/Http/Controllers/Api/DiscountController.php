@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreDiscountRequest;
+use App\Http\Requests\UpdateDiscountRequest;
+use App\Http\Resources\DiscountResource;
 use App\Models\Discount;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class DiscountController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Discount::query();
 
@@ -25,36 +28,17 @@ class DiscountController extends Controller
             });
         }
 
-        $discounts = $query->latest()->get();
+        $discounts = $query->latest()->paginate($request->integer('per_page', 15));
 
-        return [
-            'discounts' => $discounts,
-        ];
+        return DiscountResource::collection($discounts);
     }
 
-    public function store(Request $request): array
+    public function store(StoreDiscountRequest $request): array
     {
-        $request->validate([
-            'code' => 'required|string|max:50|unique:discounts',
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:percentage,fixed_amount,buy_x_get_y,free_shipping',
-            'value' => 'required|numeric|min:0',
-            'minimum_purchase' => 'nullable|numeric|min:0',
-            'maximum_discount' => 'nullable|numeric|min:0',
-            'usage_limit' => 'nullable|integer|min:1',
-            'buy_quantity' => 'nullable|integer|min:1',
-            'get_quantity' => 'nullable|integer|min:1',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'is_active' => 'boolean',
-            'applicable_to' => 'required|in:all_products,specific_products,categories,customers',
-            'description' => 'nullable|string',
-        ]);
-
-        $discount = Discount::create($request->all());
+        $discount = Discount::create($request->validated());
 
         return [
-            'discount' => $discount,
+            'discount' => new DiscountResource($discount),
             'message' => 'Descuento creado exitosamente',
         ];
     }
@@ -62,33 +46,16 @@ class DiscountController extends Controller
     public function show(Discount $discount): array
     {
         return [
-            'discount' => $discount,
+            'discount' => new DiscountResource($discount),
         ];
     }
 
-    public function update(Request $request, Discount $discount): array
+    public function update(UpdateDiscountRequest $request, Discount $discount): array
     {
-        $request->validate([
-            'code' => ['sometimes', 'string', 'max:50', Rule::unique('discounts')->ignore($discount->id)],
-            'name' => 'sometimes|string|max:255',
-            'type' => 'sometimes|in:percentage,fixed_amount,buy_x_get_y,free_shipping',
-            'value' => 'sometimes|numeric|min:0',
-            'minimum_purchase' => 'nullable|numeric|min:0',
-            'maximum_discount' => 'nullable|numeric|min:0',
-            'usage_limit' => 'nullable|integer|min:1',
-            'buy_quantity' => 'nullable|integer|min:1',
-            'get_quantity' => 'nullable|integer|min:1',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after:start_date',
-            'is_active' => 'sometimes|boolean',
-            'applicable_to' => 'sometimes|in:all_products,specific_products,categories,customers',
-            'description' => 'nullable|string',
-        ]);
-
-        $discount->update($request->all());
+        $discount->update($request->validated());
 
         return [
-            'discount' => $discount,
+            'discount' => new DiscountResource($discount),
             'message' => 'Descuento actualizado exitosamente',
         ];
     }
@@ -136,7 +103,7 @@ class DiscountController extends Controller
 
         return [
             'valid' => true,
-            'discount' => $discount,
+            'discount' => new DiscountResource($discount),
             'discount_amount' => $discountAmount,
             'final_amount' => max(0, $request->purchase_amount - $discountAmount),
         ];

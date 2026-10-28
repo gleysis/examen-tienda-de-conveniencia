@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StorePermissionRequest;
+use App\Http\Requests\UpdatePermissionRequest;
 use App\Models\Permission;
-use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
@@ -22,30 +23,18 @@ class PermissionController extends Controller
         ];
     }
 
-    public function store(Request $request): array
+    public function store(StorePermissionRequest $request): array
     {
-        $request->validate([
-            'name' => 'required|string',
-            'slug' => 'required|string|unique:permissions,slug',
-            'description' => 'nullable|string',
-        ]);
-
-        $permission = Permission::create($request->only(['name', 'slug', 'description']));
+        $permission = Permission::create($request->validated());
 
         return [
             'permission' => $permission,
         ];
     }
 
-    public function update(Request $request, Permission $permission): array
+    public function update(UpdatePermissionRequest $request, Permission $permission): array
     {
-        $request->validate([
-            'name' => 'sometimes|required|string',
-            'slug' => 'sometimes|required|string|unique:permissions,slug,'.$permission->id,
-            'description' => 'nullable|string',
-        ]);
-
-        $permission->update($request->only(['name', 'slug', 'description']));
+        $permission->update($request->validated());
 
         return [
             'permission' => $permission,

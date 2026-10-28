@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface Supplier {
   id: number;
@@ -21,10 +22,6 @@ interface Supplier {
   notes: string | null;
 }
 
-interface SuppliersResponse {
-  suppliers: Supplier[];
-}
-
 interface SupplierResponse {
   supplier: Supplier;
   message: string;
@@ -38,8 +35,8 @@ export class SupplierService {
 
   constructor(private http: HttpClient) {}
 
-  getSuppliers(params?: any): Observable<SuppliersResponse> {
-    return this.http.get<SuppliersResponse>(`${this.apiUrl}/suppliers`, { params });
+  getSuppliers(params?: any): Observable<PaginatedResponse<Supplier>> {
+    return this.http.get<PaginatedResponse<Supplier>>(`${this.apiUrl}/suppliers`, { params });
   }
 
   getSupplier(id: number): Observable<SupplierResponse> {

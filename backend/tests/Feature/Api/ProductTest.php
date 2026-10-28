@@ -74,8 +74,8 @@ class ProductTest extends TestCase
 
         $this->getJson('/api/products?search=Pepsi')
             ->assertOk()
-            ->assertJsonCount(1, 'products')
-            ->assertJsonPath('products.0.name', 'Pepsi Lata');
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Pepsi Lata');
     }
 
     public function test_index_excludes_inactive_products(): void
@@ -86,6 +86,6 @@ class ProductTest extends TestCase
 
         $this->getJson('/api/products')
             ->assertOk()
-            ->assertJsonCount(1, 'products');
+            ->assertJsonCount(1, 'data');
     }
 }

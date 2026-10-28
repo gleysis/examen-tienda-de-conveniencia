@@ -4,19 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { SaleService } from '../services/sale';
+import type { Sale } from '../services/sale';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
-
-interface Sale {
-  id: number;
-  invoice_number: string;
-  total: number;
-  payment_method: string;
-  status: string;
-  created_at: string;
-  user?: any;
-  items?: any[];
-}
+import { PaginationMeta } from '../services/pagination';
 
 @Component({
   imports: [CommonModule, FormsModule, Layout],
@@ -26,6 +17,7 @@ interface Sale {
 })
 export class SalesHistory implements OnInit, OnDestroy {
   sales: Sale[] = [];
+  meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = false;
   errorMessage = '';
   user: any;
@@ -63,16 +55,17 @@ export class SalesHistory implements OnInit, OnDestroy {
     // Cleanup if needed
   }
 
-  loadSales(): void {
+  loadSales(page = 1): void {
     this.isLoading = true;
-    const params: any = {};
+    const params: any = { page };
     if (this.dateFilter.date_from) params.date_from = this.dateFilter.date_from;
     if (this.dateFilter.date_to) params.date_to = this.dateFilter.date_to;
     if (this.searchQuery) params.search = this.searchQuery;
 
     this.saleService.getSales(params).subscribe({
       next: (response) => {
-        this.sales = response.sales;
+        this.sales = response.data;
+        this.meta = response.meta;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -83,6 +76,12 @@ export class SalesHistory implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.meta.last_page) {
+      this.loadSales(page);
+    }
   }
 
   onSearch(): void {

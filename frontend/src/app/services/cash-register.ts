@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface CashRegister {
   id: number;
@@ -22,10 +23,6 @@ interface CashRegister {
   notes: string | null;
 }
 
-interface CashRegistersResponse {
-  cash_registers: CashRegister[];
-}
-
 interface CashRegisterResponse {
   cash_register: CashRegister;
   message: string;
@@ -39,8 +36,8 @@ export class CashRegisterService {
 
   constructor(private http: HttpClient) {}
 
-  getCashRegisters(params?: any): Observable<CashRegistersResponse> {
-    return this.http.get<CashRegistersResponse>(`${this.apiUrl}/cash-registers`, { params });
+  getCashRegisters(params?: any): Observable<PaginatedResponse<CashRegister>> {
+    return this.http.get<PaginatedResponse<CashRegister>>(`${this.apiUrl}/cash-registers`, { params });
   }
 
   getCashRegister(id: number): Observable<CashRegisterResponse> {

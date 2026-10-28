@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSupplierRequest;
+use App\Http\Requests\UpdateSupplierRequest;
+use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SupplierController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Supplier::query();
 
@@ -27,37 +31,17 @@ class SupplierController extends Controller
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        $suppliers = $query->latest()->get();
+        $suppliers = $query->latest()->paginate($request->integer('per_page', 15));
 
-        return [
-            'suppliers' => $suppliers,
-        ];
+        return SupplierResource::collection($suppliers);
     }
 
-    public function store(Request $request): array
+    public function store(StoreSupplierRequest $request): array
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'tax_id' => 'nullable|string|max:50',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'zip_code' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:100',
-            'payment_terms' => 'integer|min:0',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'current_balance' => 'numeric|min:0',
-            'is_active' => 'boolean',
-            'notes' => 'nullable|string',
-        ]);
-
-        $supplier = Supplier::create($request->all());
+        $supplier = Supplier::create($request->validated());
 
         return [
-            'supplier' => $supplier,
+            'supplier' => new SupplierResource($supplier),
             'message' => 'Proveedor creado exitosamente',
         ];
     }
@@ -67,34 +51,16 @@ class SupplierController extends Controller
         $supplier->load('products');
 
         return [
-            'supplier' => $supplier,
+            'supplier' => new SupplierResource($supplier),
         ];
     }
 
-    public function update(Request $request, Supplier $supplier): array
+    public function update(UpdateSupplierRequest $request, Supplier $supplier): array
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:20',
-            'tax_id' => 'nullable|string|max:50',
-            'address' => 'nullable|string',
-            'city' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'zip_code' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:100',
-            'payment_terms' => 'sometimes|integer|min:0',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'current_balance' => 'sometimes|numeric|min:0',
-            'is_active' => 'sometimes|boolean',
-            'notes' => 'nullable|string',
-        ]);
-
-        $supplier->update($request->all());
+        $supplier->update($request->validated());
 
         return [
-            'supplier' => $supplier,
+            'supplier' => new SupplierResource($supplier),
             'message' => 'Proveedor actualizado exitosamente',
         ];
     }

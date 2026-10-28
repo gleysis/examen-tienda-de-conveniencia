@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCategoryRequest;
+use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
@@ -18,16 +18,9 @@ class CategoryController extends Controller
         ];
     }
 
-    public function store(Request $request): array
+    public function store(StoreCategoryRequest $request): array
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:categories',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
-
-        $category = Category::create($request->all());
+        $category = Category::create($request->validated());
 
         return [
             'category' => $category,
@@ -42,16 +35,9 @@ class CategoryController extends Controller
         ];
     }
 
-    public function update(Request $request, Category $category): array
+    public function update(UpdateCategoryRequest $request, Category $category): array
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'slug' => ['sometimes', 'string', 'max:255', Rule::unique('categories')->ignore($category->id)],
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
-
-        $category->update($request->all());
+        $category->update($request->validated());
 
         return [
             'category' => $category,

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SupplierService } from '../services/supplier';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
+import { PaginationMeta } from '../services/pagination';
 
 interface Supplier {
   id: number;
@@ -32,6 +33,7 @@ interface Supplier {
 })
 export class Suppliers implements OnInit {
   suppliers: Supplier[] = [];
+  meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = false;
   errorMessage = '';
   showForm = false;
@@ -66,16 +68,17 @@ export class Suppliers implements OnInit {
     this.loadSuppliers();
   }
 
-  loadSuppliers(): void {
+  loadSuppliers(page = 1): void {
     this.isLoading = true;
-    const params: any = {};
+    const params: any = { page };
     if (this.searchQuery) params.search = this.searchQuery;
 
     console.log('Loading suppliers with params:', params);
     this.supplierService.getSuppliers(params).subscribe({
       next: (response) => {
         console.log('Suppliers loaded:', response);
-        this.suppliers = response.suppliers || [];
+        this.suppliers = response.data || [];
+        this.meta = response.meta;
         this.isLoading = false;
       },
       error: (error) => {
@@ -93,6 +96,12 @@ export class Suppliers implements OnInit {
         this.suppliers = [];
       },
     });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.meta.last_page) {
+      this.loadSuppliers(page);
+    }
   }
 
   onSearch(): void {

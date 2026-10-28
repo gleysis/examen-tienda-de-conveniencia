@@ -7,6 +7,7 @@ import { InventoryService } from '../services/inventory';
 import { ProductService } from '../services/product';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
+import { PaginationMeta } from '../services/pagination';
 
 interface InventoryMovement {
   id: number;
@@ -43,6 +44,7 @@ export class Inventory implements OnInit, OnDestroy {
   movements: InventoryMovement[] = [];
   products: Product[] = [];
   lowStockProducts: Product[] = [];
+  meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = false;
   errorMessage = '';
   showForm = false;
@@ -95,11 +97,18 @@ export class Inventory implements OnInit, OnDestroy {
     console.log('Inventory ngOnDestroy called');
   }
 
-  loadMovements(): void {
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.meta.last_page) {
+      this.loadMovements(page);
+    }
+  }
+
+  loadMovements(page = 1): void {
     this.isLoading = true;
-    this.inventoryService.getMovements().subscribe({
+    this.inventoryService.getMovements({ page }).subscribe({
       next: (response) => {
-        this.movements = response.movements as any;
+        this.movements = response.data as any;
+        this.meta = response.meta;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -113,9 +122,9 @@ export class Inventory implements OnInit, OnDestroy {
   }
 
   loadProducts(): void {
-    this.productService.getProducts().subscribe({
+    this.productService.getProducts({ per_page: 100 }).subscribe({
       next: (response) => {
-        this.products = response.products;
+        this.products = response.data;
         this.cdr.detectChanges();
       },
       error: (error) => {

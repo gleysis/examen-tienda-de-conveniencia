@@ -3,35 +3,28 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
         $users = User::with('roles.permissions:id,name,slug,description')
             ->select('id', 'name', 'email', 'created_at', 'updated_at')
-            ->get();
+            ->paginate($request->integer('per_page', 15));
 
-        return [
-            'users' => $users,
-        ];
+        return UserResource::collection($users);
     }
 
-    public function store(Request $request): array
+    public function store(StoreUserRequest $request): array
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-            'roles' => 'array',
-            'roles.*' => 'exists:roles,id',
-        ]);
-
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -55,16 +48,8 @@ class UserController extends Controller
         ];
     }
 
-    public function update(Request $request, User $user): array
+    public function update(UpdateUserRequest $request, User $user): array
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'password' => 'sometimes|string|min:6',
-            'roles' => 'array',
-            'roles.*' => 'exists:roles,id',
-        ]);
-
         if ($request->has('name')) {
             $user->name = $request->name;
         }

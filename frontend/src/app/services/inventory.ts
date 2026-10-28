@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface InventoryMovement {
   id: number;
@@ -14,10 +15,6 @@ interface InventoryMovement {
   notes: string;
   product: any;
   user: any;
-}
-
-interface MovementsResponse {
-  movements: InventoryMovement[];
 }
 
 interface MovementResponse {
@@ -44,8 +41,8 @@ export class InventoryService {
 
   constructor(private http: HttpClient) {}
 
-  getMovements(params?: any): Observable<MovementsResponse> {
-    return this.http.get<MovementsResponse>(`${this.apiUrl}/inventory`, { params });
+  getMovements(params?: any): Observable<PaginatedResponse<InventoryMovement>> {
+    return this.http.get<PaginatedResponse<InventoryMovement>>(`${this.apiUrl}/inventory`, { params });
   }
 
   getMovement(id: number): Observable<MovementResponse> {

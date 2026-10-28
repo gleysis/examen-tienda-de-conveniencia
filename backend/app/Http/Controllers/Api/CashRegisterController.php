@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCashRegisterRequest;
+use App\Http\Requests\UpdateCashRegisterRequest;
+use App\Http\Resources\CashRegisterResource;
 use App\Models\CashRegister;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CashRegisterController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = CashRegister::with('user');
 
@@ -16,21 +20,13 @@ class CashRegisterController extends Controller
             $query->where('status', $request->status);
         }
 
-        $cashRegisters = $query->latest()->get();
+        $cashRegisters = $query->latest()->paginate($request->integer('per_page', 15));
 
-        return [
-            'cash_registers' => $cashRegisters,
-        ];
+        return CashRegisterResource::collection($cashRegisters);
     }
 
-    public function store(Request $request): array
+    public function store(StoreCashRegisterRequest $request): array
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'opening_balance' => 'required|numeric|min:0',
-        ]);
-
         $cashRegister = CashRegister::create([
             'name' => $request->name,
             'location' => $request->location,
@@ -43,7 +39,7 @@ class CashRegisterController extends Controller
         ]);
 
         return [
-            'cash_register' => $cashRegister,
+            'cash_register' => new CashRegisterResource($cashRegister),
             'message' => 'Caja registradora creada exitosamente',
         ];
     }
@@ -53,22 +49,16 @@ class CashRegisterController extends Controller
         $cashRegister->load(['user', 'sales']);
 
         return [
-            'cash_register' => $cashRegister,
+            'cash_register' => new CashRegisterResource($cashRegister),
         ];
     }
 
-    public function update(Request $request, CashRegister $cashRegister): array
+    public function update(UpdateCashRegisterRequest $request, CashRegister $cashRegister): array
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'location' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-        ]);
-
-        $cashRegister->update($request->all());
+        $cashRegister->update($request->validated());
 
         return [
-            'cash_register' => $cashRegister,
+            'cash_register' => new CashRegisterResource($cashRegister),
             'message' => 'Caja registradora actualizada exitosamente',
         ];
     }
@@ -76,9 +66,7 @@ class CashRegisterController extends Controller
     public function open(Request $request, CashRegister $cashRegister): array
     {
         if ($cashRegister->status === 'open') {
-            return [
-                'error' => 'Esta caja registradora ya está abierta',
-            ];
+            abort(422, 'Esta caja registradora ya está abierta');
         }
 
         $request->validate([
@@ -88,7 +76,7 @@ class CashRegisterController extends Controller
         $cashRegister->open($request->opening_balance, auth()->id());
 
         return [
-            'cash_register' => $cashRegister->fresh(),
+            'cash_register' => new CashRegisterResource($cashRegister->fresh()),
             'message' => 'Caja registradora abierta exitosamente',
         ];
     }
@@ -96,9 +84,7 @@ class CashRegisterController extends Controller
     public function close(Request $request, CashRegister $cashRegister): array
     {
         if ($cashRegister->status === 'closed') {
-            return [
-                'error' => 'Esta caja registradora ya está cerrada',
-            ];
+            abort(422, 'Esta caja registradora ya está cerrada');
         }
 
         $request->validate([
@@ -108,7 +94,7 @@ class CashRegisterController extends Controller
         $cashRegister->close($request->actual_closing);
 
         return [
-            'cash_register' => $cashRegister->fresh(),
+            'cash_register' => new CashRegisterResource($cashRegister->fresh()),
             'message' => 'Caja registradora cerrada exitosamente',
         ];
     }
@@ -116,9 +102,7 @@ class CashRegisterController extends Controller
     public function destroy(CashRegister $cashRegister): array
     {
         if ($cashRegister->status === 'open') {
-            return [
-                'error' => 'No se puede eliminar una caja registradora abierta',
-            ];
+            abort(422, 'No se puede eliminar una caja registradora abierta');
         }
 
         $cashRegister->delete();
@@ -142,7 +126,7 @@ class CashRegisterController extends Controller
         }
 
         return [
-            'cash_register' => $cashRegister,
+            'cash_register' => new CashRegisterResource($cashRegister),
         ];
     }
 }

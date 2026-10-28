@@ -66,7 +66,7 @@ class SaleTest extends TestCase
             'payment_method' => 'cash',
         ]);
 
-        $response->assertOk()->assertJsonStructure(['error']);
+        $response->assertUnprocessable();
 
         $this->assertDatabaseCount('sales', 0);
         $this->assertDatabaseCount('inventory_movements', 0);
@@ -128,7 +128,8 @@ class SaleTest extends TestCase
 
         $this->getJson('/api/sales')
             ->assertOk()
-            ->assertJsonCount(3, 'sales');
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('meta.total', 3);
     }
 
     public function test_forbids_listing_sales_without_permission(): void

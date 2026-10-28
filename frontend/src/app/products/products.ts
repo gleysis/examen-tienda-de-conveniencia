@@ -7,6 +7,7 @@ import { ProductService } from '../services/product';
 import { CategoryService } from '../services/category';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
+import { PaginationMeta } from '../services/pagination';
 
 interface Category {
   id: number;
@@ -41,6 +42,7 @@ interface Product {
 export class Products implements OnInit, OnDestroy {
   products: Product[] = [];
   categories: Category[] = [];
+  meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = false;
   errorMessage = '';
   showForm = false;
@@ -97,10 +99,10 @@ export class Products implements OnInit, OnDestroy {
     console.log('Products ngOnDestroy called');
   }
 
-  loadProducts(): void {
+  loadProducts(page = 1): void {
     this.isLoading = true;
     this.errorMessage = '';
-    const params: any = {};
+    const params: any = { page };
     if (this.searchQuery) params.search = this.searchQuery;
     if (this.selectedCategoryId) params.category_id = this.selectedCategoryId;
 
@@ -108,7 +110,8 @@ export class Products implements OnInit, OnDestroy {
     this.productService.getProducts(params).subscribe({
       next: (response) => {
         console.log('Products loaded:', response);
-        this.products = response.products || [];
+        this.products = response.data || [];
+        this.meta = response.meta;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -153,6 +156,12 @@ export class Products implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  goToPage(page: number): void {
+    if (page >= 1 && page <= this.meta.last_page) {
+      this.loadProducts(page);
+    }
   }
 
   onSearch(): void {

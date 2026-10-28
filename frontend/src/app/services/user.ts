@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface Role {
   id: number;
@@ -14,10 +15,6 @@ interface User {
   name: string;
   email: string;
   roles: Role[];
-}
-
-interface UsersResponse {
-  users: User[];
 }
 
 interface UserResponse {
@@ -37,9 +34,8 @@ export class UserService {
 
   constructor(private http: HttpClient) {}
 
-  getUsers(): Observable<UsersResponse> {
-    console.log('Fetching users from:', `${this.apiUrl}/users`);
-    return this.http.get<UsersResponse>(`${this.apiUrl}/users`);
+  getUsers(params?: any): Observable<PaginatedResponse<User>> {
+    return this.http.get<PaginatedResponse<User>>(`${this.apiUrl}/users`, { params });
   }
 
   getUser(id: number): Observable<UserResponse> {

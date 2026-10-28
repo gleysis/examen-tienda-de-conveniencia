@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSystemSettingRequest;
+use App\Http\Requests\UpdateSystemSettingRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 
@@ -27,18 +29,9 @@ class SystemSettingController extends Controller
         ];
     }
 
-    public function store(Request $request): array
+    public function store(StoreSystemSettingRequest $request): array
     {
-        $request->validate([
-            'key' => 'required|string|max:255|unique:system_settings',
-            'value' => 'nullable|string',
-            'type' => 'required|in:string,integer,float,boolean,array,json',
-            'group' => 'required|string|max:100',
-            'description' => 'nullable|string',
-            'is_public' => 'boolean',
-        ]);
-
-        $setting = SystemSetting::create($request->all());
+        $setting = SystemSetting::create($request->validated());
 
         return [
             'setting' => $setting,
@@ -53,17 +46,9 @@ class SystemSettingController extends Controller
         ];
     }
 
-    public function update(Request $request, SystemSetting $setting): array
+    public function update(UpdateSystemSettingRequest $request, SystemSetting $setting): array
     {
-        $request->validate([
-            'value' => 'nullable|string',
-            'type' => 'sometimes|in:string,integer,float,boolean,array,json',
-            'group' => 'sometimes|string|max:100',
-            'description' => 'nullable|string',
-            'is_public' => 'sometimes|boolean',
-        ]);
-
-        $setting->update($request->all());
+        $setting->update($request->validated());
 
         return [
             'setting' => $setting,

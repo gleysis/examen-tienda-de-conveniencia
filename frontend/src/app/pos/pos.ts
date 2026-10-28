@@ -87,10 +87,10 @@ export class Pos implements OnInit, OnDestroy {
     this.isLoading = true;
     this.errorMessage = '';
     console.log('Loading POS products');
-    this.productService.getProducts({ is_active: true }).subscribe({
+    this.productService.getProducts({ is_active: true, per_page: 100 }).subscribe({
       next: (response) => {
         console.log('POS products loaded:', response);
-        this.products = response.products || [];
+        this.products = response.data || [];
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -115,10 +115,10 @@ export class Pos implements OnInit, OnDestroy {
   onSearch(): void {
     if (this.searchQuery) {
       console.log('Searching products:', this.searchQuery);
-      this.productService.getProducts({ search: this.searchQuery }).subscribe({
+      this.productService.getProducts({ search: this.searchQuery, per_page: 100 }).subscribe({
         next: (response) => {
           console.log('Search results:', response);
-          this.products = response.products || [];
+          this.products = response.data || [];
         },
         error: (error) => {
           console.error('Error searching products:', error);

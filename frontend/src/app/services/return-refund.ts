@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface ReturnRefund {
   id: number;
@@ -21,10 +22,6 @@ interface ReturnRefund {
   notes: string | null;
 }
 
-interface ReturnsResponse {
-  returns: ReturnRefund[];
-}
-
 interface ReturnRefundResponse {
   return_refund: ReturnRefund;
   message: string;
@@ -38,8 +35,8 @@ export class ReturnRefundService {
 
   constructor(private http: HttpClient) {}
 
-  getReturns(params?: any): Observable<ReturnsResponse> {
-    return this.http.get<ReturnsResponse>(`${this.apiUrl}/returns`, { params });
+  getReturns(params?: any): Observable<PaginatedResponse<ReturnRefund>> {
+    return this.http.get<PaginatedResponse<ReturnRefund>>(`${this.apiUrl}/returns`, { params });
   }
 
   getReturnRefund(id: number): Observable<ReturnRefundResponse> {

@@ -3,17 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProductController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Product::with(['category:id,name,slug', 'supplier:id,name'])
-            ->where('is_active', true)
-            ->select('id', 'name', 'sku', 'price', 'cost', 'stock', 'min_stock', 'category_id', 'supplier_id', 'barcode', 'is_active');
+            ->where('is_active', true);
 
         if ($request->has('category_id')) {
             $query->where('category_id', $request->category_id);
@@ -32,35 +34,17 @@ class ProductController extends Controller
             });
         }
 
-        $products = $query->get();
+        $products = $query->paginate($request->integer('per_page', 15));
 
-        return [
-            'products' => $products,
-        ];
+        return ProductResource::collection($products);
     }
 
-    public function store(Request $request): array
+    public function store(StoreProductRequest $request): array
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'sku' => 'required|string|max:255|unique:products',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'cost' => 'nullable|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'min_stock' => 'required|integer|min:0',
-            'max_stock' => 'nullable|integer|min:0',
-            'category_id' => 'required|exists:categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'barcode' => 'nullable|string|max:255',
-            'image' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
-
-        $product = Product::create($request->all());
+        $product = Product::create($request->validated());
 
         return [
-            'product' => $product->load('category'),
+            'product' => new ProductResource($product->load('category')),
             'message' => 'Producto creado exitosamente',
         ];
     }
@@ -68,32 +52,16 @@ class ProductController extends Controller
     public function show(Product $product): array
     {
         return [
-            'product' => $product->load(['category', 'supplier']),
+            'product' => new ProductResource($product->load(['category', 'supplier'])),
         ];
     }
 
-    public function update(Request $request, Product $product): array
+    public function update(UpdateProductRequest $request, Product $product): array
     {
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'sku' => ['sometimes', 'string', 'max:255', Rule::unique('products')->ignore($product->id)],
-            'description' => 'nullable|string',
-            'price' => 'sometimes|numeric|min:0',
-            'cost' => 'nullable|numeric|min:0',
-            'stock' => 'sometimes|integer|min:0',
-            'min_stock' => 'sometimes|integer|min:0',
-            'max_stock' => 'nullable|integer|min:0',
-            'category_id' => 'sometimes|exists:categories,id',
-            'supplier_id' => 'nullable|exists:suppliers,id',
-            'barcode' => 'nullable|string|max:255',
-            'image' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
-
-        $product->update($request->all());
+        $product->update($request->validated());
 
         return [
-            'product' => $product->load(['category', 'supplier']),
+            'product' => new ProductResource($product->load(['category', 'supplier'])),
             'message' => 'Producto actualizado exitosamente',
         ];
     }

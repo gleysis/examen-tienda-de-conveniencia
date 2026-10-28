@@ -3,17 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSaleRequest;
+use App\Http\Requests\UpdateSaleRequest;
+use App\Http\Resources\SaleResource;
 use App\Models\CashRegister;
 use App\Models\Discount;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
 {
-    public function index(Request $request): array
+    public function index(Request $request): AnonymousResourceCollection
     {
         $query = Sale::with(['user', 'cashRegister', 'items.product']);
 
@@ -29,28 +33,13 @@ class SaleController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $sales = $query->latest()->get();
+        $sales = $query->latest()->paginate($request->integer('per_page', 15));
 
-        return [
-            'sales' => $sales,
-        ];
+        return SaleResource::collection($sales);
     }
 
-    public function store(Request $request): array
+    public function store(StoreSaleRequest $request): array
     {
-        $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'cash_register_id' => 'nullable|exists:cash_registers,id',
-            'discount_code' => 'nullable|string|exists:discounts,code',
-            'payment_method' => 'required|in:cash,card,transfer',
-            'discount' => 'nullable|numeric|min:0',
-            'tax' => 'nullable|numeric|min:0',
-            'notes' => 'nullable|string',
-        ]);
-
         return DB::transaction(function () use ($request) {
             $subtotal = 0;
             $saleItems = [];
@@ -59,9 +48,7 @@ class SaleController extends Controller
                 $product = Product::findOrFail($item['product_id']);
 
                 if ($product->stock < $item['quantity']) {
-                    return [
-                        'error' => "Stock insuficiente para {$product->name}. Disponible: {$product->stock}, Solicitado: {$item['quantity']}",
-                    ];
+                    abort(422, "Stock insuficiente para {$product->name}. Disponible: {$product->stock}, Solicitado: {$item['quantity']}");
                 }
 
                 $itemSubtotal = $item['quantity'] * $item['unit_price'];
@@ -145,7 +132,7 @@ class SaleController extends Controller
             }
 
             return [
-                'sale' => $sale->load(['user', 'cashRegister', 'items.product']),
+                'sale' => new SaleResource($sale->load(['user', 'cashRegister', 'items.product'])),
                 'message' => 'Venta registrada exitosamente',
             ];
         });
@@ -154,22 +141,16 @@ class SaleController extends Controller
     public function show(Sale $sale): array
     {
         return [
-            'sale' => $sale->load(['user', 'cashRegister', 'items.product']),
+            'sale' => new SaleResource($sale->load(['user', 'cashRegister', 'items.product'])),
         ];
     }
 
-    public function update(Request $request, Sale $sale): array
+    public function update(UpdateSaleRequest $request, Sale $sale): array
     {
-        $request->validate([
-            'status' => 'sometimes|in:pending,completed,cancelled',
-            'payment_method' => 'sometimes|in:cash,card,transfer',
-            'notes' => 'nullable|string',
-        ]);
-
-        $sale->update($request->all());
+        $sale->update($request->validated());
 
         return [
-            'sale' => $sale->load(['user', 'items.product']),
+            'sale' => new SaleResource($sale->load(['user', 'items.product'])),
             'message' => 'Venta actualizada exitosamente',
         ];
     }
@@ -177,9 +158,7 @@ class SaleController extends Controller
     public function destroy(Sale $sale): array
     {
         if ($sale->status === 'completed') {
-            return [
-                'error' => 'No se puede eliminar una venta completada',
-            ];
+            abort(422, 'No se puede eliminar una venta completada');
         }
 
         $sale->delete();

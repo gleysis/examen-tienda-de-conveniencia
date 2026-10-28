@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface SaleItem {
   product_id: number;
@@ -9,11 +10,10 @@ interface SaleItem {
   discount?: number;
 }
 
-interface Sale {
+export interface Sale {
   id: number;
   invoice_number: string;
   user_id: number;
-  customer_id: number | null;
   cash_register_id: number | null;
   subtotal: number;
   tax: number;
@@ -21,12 +21,12 @@ interface Sale {
   total: number;
   payment_method: string;
   status: string;
-  notes: string;
-  items: SaleItem[];
-}
-
-interface SalesResponse {
-  sales: Sale[];
+  notes: string | null;
+  user?: any;
+  cash_register?: any;
+  items?: any[];
+  created_at: string;
+  updated_at?: string;
 }
 
 interface SaleResponse {
@@ -43,8 +43,8 @@ export class SaleService {
 
   constructor(private http: HttpClient) {}
 
-  getSales(params?: any): Observable<SalesResponse> {
-    return this.http.get<SalesResponse>(`${this.apiUrl}/sales`, { params });
+  getSales(params?: any): Observable<PaginatedResponse<Sale>> {
+    return this.http.get<PaginatedResponse<Sale>>(`${this.apiUrl}/sales`, { params });
   }
 
   getSale(id: number): Observable<SaleResponse> {

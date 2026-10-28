@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PaginatedResponse } from './pagination';
 
 interface Discount {
   id: number;
@@ -19,10 +20,6 @@ interface Discount {
   is_active: boolean;
   applicable_to: string;
   description: string | null;
-}
-
-interface DiscountsResponse {
-  discounts: Discount[];
 }
 
 interface DiscountResponse {
@@ -46,8 +43,8 @@ export class DiscountService {
 
   constructor(private http: HttpClient) {}
 
-  getDiscounts(params?: any): Observable<DiscountsResponse> {
-    return this.http.get<DiscountsResponse>(`${this.apiUrl}/discounts`, { params });
+  getDiscounts(params?: any): Observable<PaginatedResponse<Discount>> {
+    return this.http.get<PaginatedResponse<Discount>>(`${this.apiUrl}/discounts`, { params });
   }
 
   getDiscount(id: number): Observable<DiscountResponse> {
