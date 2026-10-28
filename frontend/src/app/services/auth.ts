@@ -1,0 +1,94 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
+import { throwError } from 'rxjs';
+
+interface LoginResponse {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    roles?: any[];
+  };
+  token: string;
+}
+
+interface UserResponse {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+    roles?: any[];
+  };
+}
+
+@Injectable({
+  providedIn: 'root',
+})
+export class AuthService {
+  private apiUrl = 'http://127.0.0.1:8000/api';
+
+  constructor(private http: HttpClient) {}
+
+  login(email: string, password: string): Observable<LoginResponse> {
+    console.log('AuthService - Attempting login for:', email);
+    return this.http.post<LoginResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
+      map((response) => {
+        console.log('AuthService - Login successful');
+        console.log('AuthService - Token received:', response.token ? response.token.substring(0, 20) + '...' : 'none');
+        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        console.log('AuthService - Token saved to localStorage');
+        console.log('AuthService - User saved to localStorage:', response.user);
+        return response;
+      }),
+      catchError((error) => {
+        console.error('AuthService - Login error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  logout(): Observable<{ message: string }> {
+    console.log('AuthService - Attempting logout');
+    return this.http.post<{ message: string }>(`${this.apiUrl}/logout`, {}).pipe(
+      map(() => {
+        console.log('AuthService - Logout successful');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        return { message: 'Successfully logged out' };
+      }),
+      catchError((error) => {
+        console.error('AuthService - Logout error:', error);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        return throwError(() => error);
+      })
+    );
+  }
+
+  getUser(): Observable<UserResponse> {
+    console.log('AuthService - Getting current user');
+    return this.http.get<UserResponse>(`${this.apiUrl}/user`).pipe(
+      catchError((error) => {
+        console.error('AuthService - Get user error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('auth_token');
+    return !!token;
+  }
+
+  getCurrentUser(): any {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('auth_token');
+  }
+}

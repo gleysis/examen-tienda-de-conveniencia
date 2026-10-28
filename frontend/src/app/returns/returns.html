@@ -1,0 +1,176 @@
+<div class="returns-container">
+  <div class="header">
+    <h1>Gestión de Devoluciones</h1>
+    <button (click)="showAddForm()" class="btn btn-primary">Nueva Devolución</button>
+  </div>
+
+  <div class="filters">
+    <input
+      type="text"
+      [(ngModel)]="searchQuery"
+      placeholder="Buscar devoluciones..."
+      class="search-input"
+    />
+    <select [(ngModel)]="statusFilter" class="filter-select">
+      <option value="">Todos los estados</option>
+      <option value="pending">Pendiente</option>
+      <option value="approved">Aprobado</option>
+      <option value="rejected">Rechazado</option>
+      <option value="processed">Procesado</option>
+    </select>
+    <button (click)="onFilter()" class="btn btn-secondary">Filtrar</button>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="isLoading" class="loading">Cargando...</div>
+
+  <div *ngIf="!isLoading && !showForm && !showProcessForm" class="returns-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Venta</th>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Monto Reembolso</th>
+          <th>Razón</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let returnRefund of returns">
+          <td>{{ returnRefund.return_number }}</td>
+          <td>{{ returnRefund.sale_id }}</td>
+          <td>{{ returnRefund.product_id }}</td>
+          <td>{{ returnRefund.quantity }}</td>
+          <td>${{ returnRefund.refund_amount.toFixed(2) }}</td>
+          <td>{{ returnRefund.reason }}</td>
+          <td>
+            <span [class]="getStatusClass(returnRefund.status)">
+              {{ getStatusLabel(returnRefund.status) }}
+            </span>
+          </td>
+          <td>
+            <button
+              *ngIf="returnRefund.status === 'pending'"
+              (click)="updateStatus(returnRefund, 'approved')"
+              class="btn btn-sm btn-success"
+            >
+              Aprobar
+            </button>
+            <button
+              *ngIf="returnRefund.status === 'approved'"
+              (click)="showProcessForm(returnRefund)"
+              class="btn btn-sm btn-info"
+            >
+              Procesar
+            </button>
+            <button
+              *ngIf="returnRefund.status === 'pending'"
+              (click)="updateStatus(returnRefund, 'rejected')"
+              class="btn btn-sm btn-danger"
+            >
+              Rechazar
+            </button>
+            <button
+              *ngIf="returnRefund.status !== 'processed'"
+              (click)="deleteReturn(returnRefund)"
+              class="btn btn-sm btn-danger"
+            >
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="showForm" class="return-form">
+    <h2>Nueva Devolución</h2>
+    <form (ngSubmit)="saveReturn()">
+      <div class="form-group">
+        <label>Venta *</label>
+        <select [(ngModel)]="returnForm.sale_id" name="sale_id" (change)="onSaleChange()" required>
+          <option value="">Seleccione una venta</option>
+          <option *ngFor="let sale of sales" [value]="sale.id">
+            {{ sale.invoice_number }}
+          </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ID de Venta *</label>
+        <input type="number" [(ngModel)]="returnForm.sale_id" name="sale_id" required />
+      </div>
+      <div class="form-group">
+        <label>ID de Item de Venta *</label>
+        <input type="number" [(ngModel)]="returnForm.sale_item_id" name="sale_item_id" required />
+      </div>
+      <div class="form-group">
+        <label>ID de Producto *</label>
+        <input type="number" [(ngModel)]="returnForm.product_id" name="product_id" required />
+      </div>
+      <div class="form-group">
+        <label>Cantidad *</label>
+        <input type="number" [(ngModel)]="returnForm.quantity" name="quantity" min="1" required />
+      </div>
+      <div class="form-group">
+        <label>Monto de Reembolso *</label>
+        <input type="number" [(ngModel)]="returnForm.refund_amount" name="refund_amount" min="0" step="0.01" required />
+      </div>
+      <div class="form-group">
+        <label>Razón *</label>
+        <select [(ngModel)]="returnForm.reason" name="reason" required>
+          <option value="defective">Defectuoso</option>
+          <option value="wrong_item">Producto incorrecto</option>
+          <option value="no_longer_needed">Ya no se necesita</option>
+          <option value="customer_preference">Preferencia del cliente</option>
+          <option value="other">Otro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descripción de la Razón</label>
+        <textarea [(ngModel)]="returnForm.reason_description" name="reason_description" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Método de Reembolso *</label>
+        <select [(ngModel)]="returnForm.refund_method" name="refund_method" required>
+          <option value="cash">Efectivo</option>
+          <option value="card">Tarjeta</option>
+          <option value="transfer">Transferencia</option>
+          <option value="store_credit">Crédito en tienda</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notas</label>
+        <textarea [(ngModel)]="returnForm.notes" name="notes" rows="3"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" (click)="cancelForm()" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="isProcessingFormVisible" class="process-form">
+    <h2>Procesar Devolución</h2>
+    <div class="return-details">
+      <p><strong>Número:</strong> {{ processingReturn?.return_number }}</p>
+      <p><strong>Monto:</strong> ${{ processingReturn?.refund_amount.toFixed(2) }}</p>
+      <p><strong>Método:</strong> {{ processingReturn?.refund_method }}</p>
+    </div>
+    <form (ngSubmit)="processReturn()">
+      <div class="form-group">
+        <label>Número de Referencia</label>
+        <input type="text" [(ngModel)]="processForm.reference_number" name="reference_number" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Procesar</button>
+        <button type="button" (click)="cancelProcessForm()" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>

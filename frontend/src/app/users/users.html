@@ -1,0 +1,172 @@
+<app-layout [userName]="user?.name" [userRole]="'admin'">
+  <div class="users-container">
+    <div class="users-header">
+      <div class="search-bar">
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="filterUsers()"
+          placeholder="Buscar usuarios..."
+          class="search-input"
+        />
+      </div>
+      <button (click)="openCreateForm()" class="btn-create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14 M5 12h14"></path>
+        </svg>
+        Nuevo Usuario
+      </button>
+    </div>
+
+    <div class="error-message" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <div class="loading" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p>Cargando usuarios...</p>
+    </div>
+
+    <div class="users-table-container" *ngIf="!isLoading">
+      <div class="no-users" *ngIf="filteredUsers.length === 0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
+        </svg>
+        <p>No hay usuarios registrados</p>
+      </div>
+      <table class="users-table" *ngIf="filteredUsers.length > 0">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Roles</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of filteredUsers">
+            <td>{{ user.name }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <div class="roles-column">
+                <div *ngIf="user.roles.length > 0">
+                  <span class="role-badge" *ngFor="let role of user.roles">
+                    {{ role.name }}
+                  </span>
+                </div>
+                <div *ngIf="user.roles.length === 0" class="no-roles">
+                  Sin roles
+                </div>
+              </div>
+            </td>
+            <td>
+              <button (click)="openEditForm(user)" class="btn-action btn-edit" title="Editar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button (click)="deleteUser(user)" class="btn-action btn-delete" title="Eliminar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6"></path>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  <div class="modal-overlay" *ngIf="showForm" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditing ? 'Editar Usuario' : 'Nuevo Usuario' }}</h2>
+        <button (click)="closeForm()" class="btn-close">&times;</button>
+      </div>
+
+      <form (ngSubmit)="onSubmit()">
+        <div class="form-error" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="form-group">
+          <label for="name">Nombre</label>
+          <input
+            id="name"
+            type="text"
+            [(ngModel)]="formData.name"
+            name="name"
+            required
+            class="form-control"
+            [ngClass]="{'error': formErrors.name}"
+          />
+          <div class="field-error" *ngIf="formErrors.name">
+            <span *ngFor="let error of formErrors.name">{{ error }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            [(ngModel)]="formData.email"
+            name="email"
+            required
+            class="form-control"
+            [ngClass]="{'error': formErrors.email}"
+          />
+          <div class="field-error" *ngIf="formErrors.email">
+            <span *ngFor="let error of formErrors.email">{{ error }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">
+            {{ isEditing ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña' }}
+          </label>
+          <input
+            id="password"
+            type="password"
+            [(ngModel)]="formData.password"
+            name="password"
+            [required]="!isEditing"
+            minlength="6"
+            class="form-control"
+            [ngClass]="{'error': formErrors.password}"
+          />
+          <div class="field-error" *ngIf="formErrors.password">
+            <span *ngFor="let error of formErrors.password">{{ error }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Roles</label>
+          <div class="roles-checkboxes">
+            <p *ngIf="roles.length === 0">Cargando roles... ({{ roles.length }})</p>
+            <label *ngFor="let role of roles" class="role-checkbox">
+              <input
+                type="checkbox"
+                [value]="role.id"
+                [checked]="isRoleSelected(role.id)"
+                (change)="toggleRole(role.id)"
+              />
+              <span>{{ role.name }}</span>
+              <small *ngIf="role.description" class="role-description">{{ role.description }}</small>
+            </label>
+          </div>
+          <div class="field-error" *ngIf="formErrors.roles">
+            <span *ngFor="let error of formErrors.roles">{{ error }}</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" (click)="closeForm()" class="btn-cancel">Cancelar</button>
+          <button type="submit" class="btn-submit" [disabled]="isLoading">
+            {{ isLoading ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+</app-layout>

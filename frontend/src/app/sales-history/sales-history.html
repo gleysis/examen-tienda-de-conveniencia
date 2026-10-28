@@ -1,0 +1,125 @@
+<app-layout [userName]="user?.name" [userRole]="'seller'">
+  <div class="sales-history-container">
+    <div class="history-header">
+      <h1>Historial de Ventas</h1>
+      <div class="filter-section">
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Buscar por número de factura..."
+          class="search-input"
+          (keyup.enter)="onSearch()"
+        />
+        <input
+          type="date"
+          [(ngModel)]="dateFilter.date_from"
+          class="date-input"
+        />
+        <input
+          type="date"
+          [(ngModel)]="dateFilter.date_to"
+          class="date-input"
+        />
+        <button (click)="onFilter()" class="btn-filter">Filtrar</button>
+      </div>
+    </div>
+
+    <div class="error-message" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <div class="loading" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p>Cargando historial de ventas...</p>
+    </div>
+
+    <div class="sales-table" *ngIf="!isLoading">
+      <table>
+        <thead>
+          <tr>
+            <th>Factura</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Método</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let sale of sales">
+            <td>{{ sale.invoice_number }}</td>
+            <td>{{ sale.created_at | date:'short' }}</td>
+            <td>${{ sale.total.toFixed(2) }}</td>
+            <td>{{ getPaymentMethodLabel(sale.payment_method) }}</td>
+            <td>
+              <span class="status-badge" [class]="getStatusClass(sale.status)">
+                {{ getStatusLabel(sale.status) }}
+              </span>
+            </td>
+            <td>
+              <button (click)="viewDetails(sale)" class="btn-action btn-view">Ver</button>
+              <button (click)="printReceipt(sale)" class="btn-action btn-print">Imprimir</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="no-sales" *ngIf="sales.length === 0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 17v-2m3 2v4m3 4h6m-6 0v6m6 0V9m6 6H9"></path>
+        </svg>
+        <p>No hay ventas registradas</p>
+      </div>
+    </div>
+
+    <div class="modal-overlay" *ngIf="showDetails" (click)="closeDetails()">
+      <div class="modal-content" (click) *ngIf="selectedSale">
+        <div class="modal-header">
+          <h2>Detalle de Venta</h2>
+          <button (click)="closeDetails()" class="btn-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="sale-detail">
+            <p><strong>Factura:</strong> {{ selectedSale.invoice_number }}</p>
+            <p><strong>Fecha:</strong> {{ selectedSale.created_at | date:'full' }}</p>
+            <p><strong>Total:</strong> ${{ selectedSale.total.toFixed(2) }}</p>
+            <p><strong>Método de pago:</strong> {{ getPaymentMethodLabel(selectedSale.payment_method) }}</p>
+            <p><strong>Estado:</strong> {{ getStatusLabel(selectedSale.status) }}</p>
+            <p><strong>Vendedor:</strong> {{ selectedSale.user?.name || 'N/A' }}</p>
+          </div>
+
+          <div class="sale-items" *ngIf="selectedSale.items">
+            <h3>Productos Vendidos</h3>
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                  <th>Precio Unitario</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of selectedSale.items">
+                  <td>{{ item.product?.name || 'N/A' }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>${{ item.unit_price?.toFixed(2) }}</td>
+                  <td>${{ item.subtotal?.toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button (click)="printReceipt(selectedSale)" class="btn-print">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 17h2a2 2 0 002 2v2a2 2 0 002 2h2m-2-4v-4m0 0h-6m6 0v6m0-6a2 2 0 002 2v6a2 2 0 002 2m6 0V9a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+            </svg>
+            Imprimir Comprobante
+          </button>
+          <button (click)="closeDetails()" class="btn-close">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-layout>

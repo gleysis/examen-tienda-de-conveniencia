@@ -1,0 +1,157 @@
+<app-layout [userName]="user?.name" [userRole]="'admin'">
+  <div class="inventory-container">
+    <div class="inventory-header">
+      <div class="filters-section">
+        <input
+          type="text"
+          placeholder="Buscar productos..."
+          class="search-input"
+        />
+      </div>
+      <button (click)="openForm()" class="btn-create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14 M5 12h14"></path>
+        </svg>
+        Registrar Movimiento
+      </button>
+    </div>
+
+    <div class="error-message" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <div class="inventory-table-container" *ngIf="!isLoading">
+      <div class="no-products" *ngIf="products.length === 0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        </svg>
+        <p>No hay productos en inventario</p>
+      </div>
+      <table class="inventory-table" *ngIf="products.length > 0">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Stock Actual</th>
+            <th>Stock Mínimo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let product of products" [class.low-stock]="isLowStock(product)">
+            <td>{{ product.name }}</td>
+            <td>{{ product.category?.name || '-' }}</td>
+            <td>{{ product.stock }}</td>
+            <td>{{ product.min_stock || 0 }}</td>
+            <td>
+              <span class="status-badge" [class.normal]="!isLowStock(product)" [class.low]="isLowStock(product)">
+                {{ isLowStock(product) ? 'Bajo' : 'Normal' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="loading" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p>Cargando inventario...</p>
+    </div>
+
+  <div class="modal-overlay" *ngIf="showForm" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Registrar Movimiento de Inventario</h2>
+        <button (click)="closeForm()" class="btn-close">&times;</button>
+      </div>
+
+      <form (ngSubmit)="onSubmit()">
+        <div class="form-error" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="form-group">
+          <label for="product_id">Producto</label>
+          <select
+            id="product_id"
+            [(ngModel)]="formData.product_id"
+            name="product_id"
+            required
+            class="form-control"
+            [ngClass]="{'error': formErrors.product_id}"
+          >
+            <option [ngValue]="null">Seleccionar producto</option>
+            <option *ngFor="let product of products" [ngValue]="product.id">
+              {{ product.name }} (Stock: {{ product.stock }})
+            </option>
+          </select>
+          <div class="field-error" *ngIf="formErrors.product_id">
+            <span *ngFor="let error of formErrors.product_id">{{ error }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="type">Tipo de Movimiento</label>
+          <select
+            id="type"
+            [(ngModel)]="formData.type"
+            name="type"
+            required
+            class="form-control"
+          >
+            <option value="entry">Entrada (Aumentar stock)</option>
+            <option value="exit">Salida (Reducir stock)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="quantity">Cantidad</label>
+          <input
+            id="quantity"
+            type="number"
+            [(ngModel)]="formData.quantity"
+            name="quantity"
+            required
+            min="1"
+            class="form-control"
+            [ngClass]="{'error': formErrors.quantity}"
+          />
+          <div class="field-error" *ngIf="formErrors.quantity">
+            <span *ngFor="let error of formErrors.quantity">{{ error }}</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reference">Referencia</label>
+          <input
+            id="reference"
+            type="text"
+            [(ngModel)]="formData.reference"
+            name="reference"
+            class="form-control"
+            placeholder="Ej: Compra #123, Ajuste manual..."
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notas</label>
+          <textarea
+            id="notes"
+            [(ngModel)]="formData.notes"
+            name="notes"
+            class="form-control"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" (click)="closeForm()" class="btn-cancel">Cancelar</button>
+          <button type="submit" class="btn-submit" [disabled]="isLoading">
+            {{ isLoading ? 'Registrando...' : 'Registrar' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  </div>
+</app-layout>

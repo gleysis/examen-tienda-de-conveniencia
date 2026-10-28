@@ -1,0 +1,315 @@
+<app-layout [userName]="user?.name" [userRole]="'admin'">
+  <div class="reports-container">
+    <div class="reports-header">
+      <div class="filter-section">
+        <div class="filter-group">
+          <label>Desde:</label>
+          <input
+            type="date"
+            [(ngModel)]="dateFilter.date_from"
+            class="date-input"
+          />
+        </div>
+        <div class="filter-group">
+          <label>Hasta:</label>
+          <input
+            type="date"
+            [(ngModel)]="dateFilter.date_to"
+            class="date-input"
+          />
+        </div>
+        <button (click)="onFilter()" class="btn-filter">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          Filtrar
+        </button>
+      </div>
+    </div>
+
+    <div class="error-message" *ngIf="errorMessage">
+      {{ errorMessage }}
+    </div>
+
+    <div class="tabs">
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'sales'"
+        (click)="setTab('sales')"
+      >
+        Ventas
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'inventory'"
+        (click)="setTab('inventory')"
+      >
+        Inventario
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'returns'"
+        (click)="setTab('returns')"
+      >
+        Devoluciones
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'products'"
+        (click)="setTab('products')"
+      >
+        Productos
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'top-products'"
+        (click)="setTab('top-products')"
+      >
+        Top Productos
+      </button>
+      <button
+        class="tab-button"
+        [class.active]="activeTab === 'payment-methods'"
+        (click)="setTab('payment-methods')"
+      >
+        Métodos de Pago
+      </button>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'sales'">
+      <div class="summary-cards" *ngIf="salesSummary">
+        <div class="summary-card">
+          <h3>Total Ventas</h3>
+          <p class="summary-value">${{ salesSummary.total_revenue?.toFixed(2) || '0.00' }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Total Transacciones</h3>
+          <p class="summary-value">{{ salesSummary.total_sales }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Producto más vendido</h3>
+          <p class="summary-value">N/A</p>
+        </div>
+      </div>
+
+      <div class="charts-section">
+        <div class="chart-card">
+          <h3>Ventas por día</h3>
+          <div class="chart-placeholder">
+            <svg viewBox="0 0 400 200" class="line-chart">
+              <polyline points="20,150 80,120 140,90 200,110 260,70 320,100 380,80" fill="none" stroke="#1e3a8a" stroke-width="3"></polyline>
+              <circle cx="20" cy="150" r="4" fill="#1e3a8a"></circle>
+              <circle cx="80" cy="120" r="4" fill="#1e3a8a"></circle>
+              <circle cx="140" cy="90" r="4" fill="#1e3a8a"></circle>
+              <circle cx="200" cy="110" r="4" fill="#1e3a8a"></circle>
+              <circle cx="260" cy="70" r="4" fill="#1e3a8a"></circle>
+              <circle cx="320" cy="100" r="4" fill="#1e3a8a"></circle>
+              <circle cx="380" cy="80" r="4" fill="#1e3a8a"></circle>
+            </svg>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Ventas por categoría</h3>
+          <div class="chart-placeholder">
+            <svg viewBox="0 0 200 200" class="donut-chart">
+              <circle cx="100" cy="100" r="60" fill="none" stroke="#1e3a8a" stroke-width="20" stroke-dasharray="100 277" stroke-dashoffset="0"></circle>
+              <circle cx="100" cy="100" r="60" fill="none" stroke="#3b82f6" stroke-width="20" stroke-dasharray="70 277" stroke-dashoffset="-100"></circle>
+              <circle cx="100" cy="100" r="60" fill="none" stroke="#10b981" stroke-width="20" stroke-dasharray="50 277" stroke-dashoffset="-170"></circle>
+              <circle cx="100" cy="100" r="60" fill="none" stroke="#f59e0b" stroke-width="20" stroke-dasharray="57 277" stroke-dashoffset="-220"></circle>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'inventory'">
+      <div class="summary-cards" *ngIf="inventorySummary">
+        <div class="summary-card">
+          <h3>Total Productos</h3>
+          <p class="summary-value">{{ inventorySummary.total_products }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Total Stock</h3>
+          <p class="summary-value">{{ inventorySummary.total_stock }}</p>
+        </div>
+        <div class="summary-card warning">
+          <h3>Stock Bajo</h3>
+          <p class="summary-value">{{ inventorySummary.low_stock_count }}</p>
+        </div>
+      </div>
+
+      <div class="export-section">
+        <button class="btn-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8"></path>
+          </svg>
+          Exportar PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'returns'">
+      <div class="summary-cards" *ngIf="returnsSummary">
+        <div class="summary-card">
+          <h3>Total Devoluciones</h3>
+          <p class="summary-value">{{ returnsSummary.total_returns }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Total Reembolsado</h3>
+          <p class="summary-value">${{ returnsSummary.total_refunded?.toFixed(2) || '0.00' }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Procesadas</h3>
+          <p class="summary-value">{{ returnsSummary.processed_returns }}</p>
+        </div>
+        <div class="summary-card warning">
+          <h3>Pendientes</h3>
+          <p class="summary-value">{{ returnsSummary.pending_returns }}</p>
+        </div>
+      </div>
+
+      <div class="returns-list" *ngIf="returns.length > 0">
+        <h3>Lista de Devoluciones</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Monto</th>
+              <th>Estado</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let ret of returns">
+              <td>{{ ret.return_number }}</td>
+              <td>${{ ret.refund_amount?.toFixed(2) }}</td>
+              <td>
+                <span class="status-badge" [class]="ret.status">{{ getStatusLabel(ret.status) }}</span>
+              </td>
+              <td>{{ ret.created_at | date:'short' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'products'">
+      <div class="summary-cards" *ngIf="inventorySummary">
+        <div class="summary-card">
+          <h3>Total Productos</h3>
+          <p class="summary-value">{{ inventorySummary.total_products }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Total Stock</h3>
+          <p class="summary-value">{{ inventorySummary.total_stock }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Valor Total</h3>
+          <p class="summary-value">${{ inventorySummary.total_value?.toFixed(2) || '0.00' }}</p>
+        </div>
+        <div class="summary-card warning">
+          <h3>Stock Bajo</h3>
+          <p class="summary-value">{{ inventorySummary.low_stock_count }}</p>
+        </div>
+      </div>
+
+      <div class="low-stock-products" *ngIf="inventorySummary?.low_stock_products?.length > 0">
+        <h3>Productos con Stock Bajo</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Stock Actual</th>
+              <th>Stock Mínimo</th>
+              <th>Categoría</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let product of inventorySummary.low_stock_products">
+              <td>{{ product.name }}</td>
+              <td>{{ product.stock }}</td>
+              <td>{{ product.min_stock }}</td>
+              <td>{{ product.category?.name || 'N/A' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'top-products'">
+      <div class="summary-cards" *ngIf="topProductsData">
+        <div class="summary-card">
+          <h3>Total Unidades Vendidas</h3>
+          <p class="summary-value">{{ getTotalQuantitySold() }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Total Ingresos</h3>
+          <p class="summary-value">${{ getTotalRevenue()?.toFixed(2) || '0.00' }}</p>
+        </div>
+      </div>
+
+      <div class="top-products-list" *ngIf="topProductsData?.top_products?.length > 0">
+        <h3>Top 10 Productos Más Vendidos</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>SKU</th>
+              <th>Unidades Vendidas</th>
+              <th>Ingresos Totales</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of topProductsData.top_products">
+              <td>{{ item.product?.name }}</td>
+              <td>{{ item.product?.sku }}</td>
+              <td>{{ item.total_quantity }}</td>
+              <td>${{ item.total_revenue?.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'payment-methods'">
+      <div class="summary-cards" *ngIf="paymentMethodsData">
+        <div class="summary-card">
+          <h3>Total Transacciones</h3>
+          <p class="summary-value">{{ getTotalTransactions() }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>Total Ingresos</h3>
+          <p class="summary-value">${{ getTotalPaymentRevenue()?.toFixed(2) || '0.00' }}</p>
+        </div>
+      </div>
+
+      <div class="payment-methods-list" *ngIf="paymentMethodsData?.sales_by_payment_method?.length > 0">
+        <h3>Ventas por Método de Pago</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Método de Pago</th>
+              <th>Transacciones</th>
+              <th>Ingresos Totales</th>
+              <th>Promedio por Transacción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of paymentMethodsData.sales_by_payment_method">
+              <td>{{ getPaymentMethodLabel(item.payment_method) }}</td>
+              <td>{{ item.total_transactions }}</td>
+              <td>${{ item.total_revenue?.toFixed(2) }}</td>
+              <td>${{ (item.total_revenue / item.total_transactions)?.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="loading" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p>Cargando reportes...</p>
+    </div>
+  </div>
+</app-layout>

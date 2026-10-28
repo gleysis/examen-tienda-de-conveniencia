@@ -1,0 +1,58 @@
+<div class="layout-container">
+  <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
+    <div class="sidebar-header">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+        <span class="logo-text" *ngIf="!sidebarCollapsed">Tienda Express</span>
+      </div>
+      <button class="toggle-btn" (click)="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"></path>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a
+        *ngFor="let item of menuItems"
+        class="nav-item"
+        (click)="navigate(item.route)"
+        [class.active]="currentRoute === item.route"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path [attr.d]="getIconPath(item.icon)"></path>
+        </svg>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">{{ item.label }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a class="nav-item logout-item" (click)="onLogout()">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9"></path>
+        </svg>
+        <span class="nav-text" *ngIf="!sidebarCollapsed">Cerrar sesión</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="main-content" [class.collapsed]="sidebarCollapsed">
+    <header class="top-header">
+      <h1 class="page-title">{{ getPageTitle() }}</h1>
+      <div class="user-info">
+        <div class="user-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
+          </svg>
+        </div>
+        <span class="user-name">{{ userName }}</span>
+      </div>
+    </header>
+
+    <div class="content-wrapper">
+      <ng-content></ng-content>
+    </div>
+  </main>
+</div>

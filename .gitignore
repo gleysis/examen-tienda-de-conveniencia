@@ -1,0 +1,23 @@
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# Environment / secrets
+.env
+.env.backup
+.env.production
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+.codex/
+
+# Dependencies & build output (covered also by nested .gitignore files)
+node_modules/
+vendor/
+dist/
+
+# Logs
+*.log

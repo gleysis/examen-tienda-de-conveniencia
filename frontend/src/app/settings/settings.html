@@ -1,0 +1,111 @@
+<div class="settings-container">
+  <div class="header">
+    <h1>Configuración del Sistema</h1>
+    <button (click)="showAddForm()" class="btn btn-primary">Nueva Configuración</button>
+  </div>
+
+  <div class="group-tabs">
+    <button
+      class="tab-button"
+      [class.active]="activeGroup === 'all'"
+      (click)="setGroup('all')"
+    >
+      Todas
+    </button>
+    <button
+      *ngFor="let group of groups"
+      class="tab-button"
+      [class.active]="activeGroup === group"
+      (click)="setGroup(group)"
+    >
+      {{ group.charAt(0).toUpperCase() + group.slice(1) }}
+    </button>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="isLoading" class="loading">Cargando...</div>
+
+  <div *ngIf="!isLoading && !showForm" class="settings-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Clave</th>
+          <th>Valor</th>
+          <th>Tipo</th>
+          <th>Grupo</th>
+          <th>Descripción</th>
+          <th>Pública</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let setting of settings">
+          <td>{{ setting.key }}</td>
+          <td>{{ getDisplayValue(setting) }}</td>
+          <td>{{ getTypeLabel(setting.type) }}</td>
+          <td>{{ setting.group }}</td>
+          <td>{{ setting.description || '-' }}</td>
+          <td>
+            <span [class]="setting.is_public ? 'public-yes' : 'public-no'">
+              {{ setting.is_public ? 'Sí' : 'No' }}
+            </span>
+          </td>
+          <td>
+            <button (click)="editSetting(setting)" class="btn btn-sm btn-info">Editar</button>
+            <button (click)="deleteSetting(setting)" class="btn btn-sm btn-danger">Eliminar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="showForm" class="setting-form">
+    <h2>{{ editingSetting ? 'Editar Configuración' : 'Nueva Configuración' }}</h2>
+    <form (ngSubmit)="saveSetting()">
+      <div class="form-group">
+        <label>Clave *</label>
+        <input type="text" [(ngModel)]="settingForm.key" name="key" required />
+      </div>
+      <div class="form-group">
+        <label>Valor</label>
+        <input type="text" [(ngModel)]="settingForm.value" name="value" />
+      </div>
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select [(ngModel)]="settingForm.type" name="type" required>
+          <option value="string">Texto</option>
+          <option value="integer">Entero</option>
+          <option value="float">Decimal</option>
+          <option value="boolean">Booleano</option>
+          <option value="array">Arreglo</option>
+          <option value="json">JSON</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Grupo *</label>
+        <select [(ngModel)]="settingForm.group" name="group" required>
+          <option *ngFor="let group of groups" [value]="group">
+            {{ group.charAt(0).toUpperCase() + group.slice(1) }}
+          </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descripción</label>
+        <textarea [(ngModel)]="settingForm.description" name="description" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" [(ngModel)]="settingForm.is_public" name="is_public" />
+          Pública (accesible desde el frontend)
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" (click)="cancelForm()" class="btn btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>

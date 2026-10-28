@@ -1,0 +1,189 @@
+<app-layout [userName]="user?.name" [userRole]="'seller'">
+  <div class="pos-container">
+    <div class="pos-main">
+      <!-- Sección de búsqueda de productos -->
+      <div class="products-section">
+        <div class="search-area">
+          <h2>Buscar producto</h2>
+          <div class="search-input-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              placeholder="Escribe nombre, código o escanea código de barras..."
+              class="search-input"
+              (keyup.enter)="onSearch()"
+              autofocus
+            />
+            <button (click)="onSearch()" class="btn-search">Buscar</button>
+          </div>
+        </div>
+
+        <div class="error-message" *ngIf="errorMessage">
+          {{ errorMessage }}
+        </div>
+
+        <div class="products-grid" *ngIf="!isLoading">
+          <div
+            class="product-card"
+            *ngFor="let product of products"
+            (click)="addToCart(product)"
+            [class.out-of-stock]="product.stock <= 0"
+          >
+            <div class="product-info">
+              <h3>{{ product.name }}</h3>
+              <p class="product-sku">SKU: {{ product.sku }}</p>
+              <p class="product-category">{{ product.category?.name || 'Sin categoría' }}</p>
+              <p class="product-stock">Stock: {{ product.stock }}</p>
+            </div>
+            <div class="product-price">
+              <span class="price">${{ product.price.toFixed(2) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="loading" *ngIf="isLoading">
+          <div class="spinner"></div>
+          <p>Cargando productos...</p>
+        </div>
+
+        <div class="no-products" *ngIf="!isLoading && products.length === 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+          <p>No se encontraron productos</p>
+        </div>
+      </div>
+
+      <!-- Sección de lista de venta -->
+      <div class="cart-section">
+        <div class="cart-header">
+          <h2>Productos de la venta ({{ cart.length }})</h2>
+          <button (click)="clearCart()" class="btn-clear" *ngIf="cart.length > 0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16"></path>
+            </svg>
+            Cancelar
+          </button>
+        </div>
+
+        <div class="empty-cart" *ngIf="cart.length === 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+          <p>Todavía no has agregado productos</p>
+        </div>
+
+        <div class="cart-items" *ngIf="cart.length > 0">
+          <div class="cart-item" *ngFor="let item of cart; let i = index">
+            <div class="item-details">
+              <h4>{{ item.product.name }}</h4>
+              <p class="item-price">Precio: ${{ item.unit_price.toFixed(2) }}</p>
+              <p class="item-stock">Stock: {{ item.product.stock }}</p>
+            </div>
+            <div class="item-quantity">
+              <button (click)="updateQuantity(item, -1)" class="btn-qty">-</button>
+              <span>{{ item.quantity }}</span>
+              <button (click)="updateQuantity(item, 1)" class="btn-qty">+</button>
+            </div>
+            <div class="item-subtotal">
+              <span class="subtotal">${{ item.subtotal.toFixed(2) }}</span>
+              <button (click)="removeFromCart(i)" class="btn-remove">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cart-summary" *ngIf="cart.length > 0">
+          <div class="summary-row">
+            <span>Subtotal:</span>
+            <span>${{ subtotal.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row discount-row" *ngIf="discountAmount > 0">
+            <span>Descuento:</span>
+            <span>-${{ discountAmount.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row tax-row" *ngIf="saleData.tax > 0">
+            <span>Impuesto:</span>
+            <span>+${{ saleData.tax.toFixed(2) }}</span>
+          </div>
+          <div class="summary-row total">
+            <span>TOTAL A PAGAR</span>
+            <span>${{ total.toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <!-- Sección de cobro -->
+        <div class="payment-section" *ngIf="cart.length > 0">
+          <h3>Método de pago</h3>
+          <div class="payment-methods">
+            <button
+              class="payment-btn"
+              [class.active]="saleData.payment_method === 'cash'"
+              (click)="saleData.payment_method = 'cash'"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                <line x1="2" y1="10" x2="22" y2="10"></line>
+              </svg>
+              Efectivo
+            </button>
+            <button
+              class="payment-btn"
+              [class.active]="saleData.payment_method === 'card'"
+              (click)="saleData.payment_method = 'card'"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                <line x1="1" y1="10" x2="23" y2="10"></line>
+              </svg>
+              Tarjeta
+            </button>
+            <button
+              class="payment-btn"
+              [class.active]="saleData.payment_method === 'transfer'"
+              (click)="saleData.payment_method = 'transfer'"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              Transferencia
+            </button>
+          </div>
+
+          <div class="cash-input" *ngIf="saleData.payment_method === 'cash'">
+            <label>Dinero recibido ($)</label>
+            <input
+              type="number"
+              [(ngModel)]="amountReceived"
+              (ngModelChange)="calculateChange()"
+              placeholder="0.00"
+              step="0.01"
+              min="0"
+            />
+          </div>
+
+          <div class="change-display" *ngIf="saleData.payment_method === 'cash' && amountReceived > 0">
+            <span>Vuelto del cliente</span>
+            <span class="change-amount">${{ change.toFixed(2) }}</span>
+          </div>
+
+          <div class="checkout-buttons">
+            <button
+              (click)="processSale()"
+              class="btn-checkout"
+              [disabled]="isProcessingSale || cart.length === 0"
+            >
+              {{ isProcessingSale ? 'Procesando...' : 'Confirmar pago' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-layout>

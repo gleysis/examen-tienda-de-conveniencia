@@ -1,0 +1,112 @@
+<app-layout [userName]="user?.name" [userRole]="'admin'" (logout)="logout()">
+  <div class="dashboard-content">
+    <div class="dashboard-header">
+      <h1>Panel de Administrador</h1>
+      <button (click)="loadDashboardData()" class="btn-refresh" title="Recargar datos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Recargar
+      </button>
+    </div>
+
+    @if (loading) {
+      <div class="loading-container">
+        <div class="spinner"></div>
+        <p>Cargando datos...</p>
+      </div>
+    } @else {
+      <div class="summary-cards">
+        <div class="summary-card sales">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Total Ventas (hoy)</h3>
+            <p class="card-value">${{ totalSalesToday.toFixed(2) }}</p>
+          </div>
+        </div>
+
+        <div class="summary-card products">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Total Productos</h3>
+            <p class="card-value">{{ totalProducts }}</p>
+          </div>
+        </div>
+
+        <div class="summary-card stock">
+          <div class="card-icon" [class.warning]="lowStockProducts > 0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Stock Bajo</h3>
+            <p class="card-value">{{ lowStockProducts }}</p>
+          </div>
+        </div>
+
+        <div class="summary-card users">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Usuarios Activos</h3>
+            <p class="card-value">{{ activeUsers }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-section">
+        <div class="chart-card">
+          <h3>Ventas de los últimos 7 días</h3>
+          <div class="chart-placeholder">
+            @if (salesLast7Days.length > 0) {
+              <svg viewBox="0 0 400 200" class="bar-chart">
+                @for (sale of salesLast7Days; track sale.date; let i = $index) {
+                  <rect
+                    [attr.x]="20 + i * 55"
+                    [attr.y]="200 - (sale.total / (getMaxSales() || 1)) * 180"
+                    width="40"
+                    [attr.height]="(sale.total / (getMaxSales() || 1)) * 180"
+                    fill="#1e3a8a"
+                    rx="4"
+                  ></rect>
+                }
+              </svg>
+            } @else {
+              <p>No hay datos de ventas</p>
+            }
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3>Categorías más vendidas</h3>
+          <div class="chart-placeholder">
+            @if (topCategories.length > 0) {
+              <ul class="category-list">
+                @for (category of topCategories; track category.name) {
+                  <li>
+                    <span class="category-name">{{ category.name }}</span>
+                    <span class="category-count">{{ category.total_sold }} vendidos</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p>No hay datos de categorías</p>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-layout>
