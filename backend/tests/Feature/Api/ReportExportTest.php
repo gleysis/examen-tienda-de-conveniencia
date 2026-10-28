@@ -63,6 +63,22 @@ class ReportExportTest extends TestCase
         $this->assertStringContainsString('Producto A', $response->streamedContent());
     }
 
+    public function test_exports_sales_xlsx(): void
+    {
+        $manager = $this->userWithPermissions(['reports.view']);
+        Sale::factory()->create(['invoice_number' => 'INV-000001', 'user_id' => $manager->id]);
+        Sanctum::actingAs($manager);
+
+        $response = $this->get('/api/reports/sales/export?format=xlsx');
+
+        $response->assertOk();
+        $response->assertHeader(
+            'content-type',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        $response->assertHeader('content-disposition', 'attachment; filename=ventas.xlsx');
+    }
+
     public function test_forbidden_without_permission(): void
     {
         $user = User::factory()->create();

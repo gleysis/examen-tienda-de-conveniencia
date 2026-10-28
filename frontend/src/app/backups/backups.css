@@ -1,0 +1,156 @@
+.backups-container {
+  padding: 24px;
+}
+
+.backups-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.backups-header h2 {
+  margin: 0;
+}
+
+.btn-create {
+  padding: 10px 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-create:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.restore-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.restore-card h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.restore-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-restore {
+  padding: 8px 16px;
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-restore:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.restore-warning {
+  color: #b45309;
+  font-size: 13px;
+  margin: 12px 0 0;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+}
+
+.spinner {
+  border: 3px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.backups-table-container {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.backups-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.backups-table th,
+.backups-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.backups-table thead {
+  background: #f9fafb;
+}
+
+.backups-table code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.btn-action {
+  padding: 6px 12px;
+  background: #e5e7eb;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 13px;
+}
+
+.btn-action:hover {
+  background: #d1d5db;
+}
+
+.btn-action.btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.btn-action.btn-danger:hover {
+  background: #fecaca;
+}
+
+.no-backups {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+}

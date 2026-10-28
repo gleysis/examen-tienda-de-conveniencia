@@ -232,3 +232,94 @@
     height: 150px;
   }
 }
+
+.hbar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hbar-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hbar-label {
+  width: 120px;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hbar-track {
+  flex: 1;
+  background: #e5e7eb;
+  border-radius: 4px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.hbar-fill {
+  background: #2563eb;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.hbar-value {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: right;
+}
+
+.donut-chart {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.donut {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.donut-hole {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+}

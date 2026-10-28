@@ -21,6 +21,8 @@ export class Dashboard implements OnInit, OnDestroy {
   activeUsers: number = 0;
   salesLast7Days: Array<{ date: string; total: number }> = [];
   topCategories: Array<{ name: string; total_sold: number }> = [];
+  topProducts: Array<{ name: string; total_quantity: number; total_revenue: number }> = [];
+  salesByPayment: Array<{ payment_method: string; total_transactions: number; total_revenue: number }> = [];
   loading: boolean = true;
 
   constructor(
@@ -69,6 +71,26 @@ export class Dashboard implements OnInit, OnDestroy {
         this.loading = false;
         this.cdr.detectChanges();
       },
+    });
+
+    this.dashboardService.getTopProducts().subscribe({
+      next: (response) => {
+        this.topProducts = (response.top_products || []).map((item) => ({
+          name: item.product?.name || 'Sin nombre',
+          total_quantity: item.total_quantity,
+          total_revenue: item.total_revenue,
+        }));
+        this.cdr.detectChanges();
+      },
+      error: (error) => console.error('Error loading top products:', error),
+    });
+
+    this.dashboardService.getSalesByPaymentMethod().subscribe({
+      next: (response) => {
+        this.salesByPayment = response.sales_by_payment_method || [];
+        this.cdr.detectChanges();
+      },
+      error: (error) => console.error('Error loading sales by payment:', error),
     });
   }
 
@@ -132,5 +154,52 @@ export class Dashboard implements OnInit, OnDestroy {
   getMaxSales(): number {
     if (this.salesLast7Days.length === 0) return 0;
     return Math.max(...this.salesLast7Days.map((sale) => sale.total));
+  }
+
+  getMaxProductQuantity(): number {
+    if (this.topProducts.length === 0) return 0;
+    return Math.max(...this.topProducts.map((p) => p.total_quantity));
+  }
+
+  get paymentTotal(): number {
+    return this.salesByPayment.reduce((sum, s) => sum + s.total_revenue, 0);
+  }
+
+  get paymentDonutGradient(): string {
+    const colors: Record<string, string> = {
+      cash: '#059669',
+      card: '#2563eb',
+      transfer: '#d97706',
+    };
+    const total = this.paymentTotal;
+    if (total <= 0) return 'conic-gradient(#e5e7eb 0% 100%)';
+
+    let start = 0;
+    const stops = this.salesByPayment.map((s) => {
+      const pct = (s.total_revenue / total) * 100;
+      const color = colors[s.payment_method] || '#6b7280';
+      const stop = `${color} ${start}% ${start + pct}%`;
+      start += pct;
+      return stop;
+    });
+    return `conic-gradient(${stops.join(', ')})`;
+  }
+
+  getPaymentLabel(method: string): string {
+    const labels: Record<string, string> = {
+      cash: 'Efectivo',
+      card: 'Tarjeta',
+      transfer: 'Transferencia',
+    };
+    return labels[method] || method;
+  }
+
+  getPaymentColor(method: string): string {
+    const colors: Record<string, string> = {
+      cash: '#059669',
+      card: '#2563eb',
+      transfer: '#d97706',
+    };
+    return colors[method] || '#6b7280';
   }
 }

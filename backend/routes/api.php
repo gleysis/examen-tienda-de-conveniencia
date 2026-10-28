@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
@@ -114,4 +115,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/settings/{setting}', [SystemSettingController::class, 'show'])->middleware('can:settings.view');
     Route::put('/settings/{setting}', [SystemSettingController::class, 'update'])->middleware('can:settings.edit');
     Route::delete('/settings/{setting}', [SystemSettingController::class, 'destroy'])->middleware('can:settings.edit');
+
+    Route::get('/backups', [BackupController::class, 'index'])->middleware('can:settings.edit');
+    Route::post('/backups', [BackupController::class, 'store'])->middleware('can:settings.edit');
+    Route::post('/backups/restore', [BackupController::class, 'restore'])->middleware('can:settings.edit');
+    Route::get('/backups/{filename}', [BackupController::class, 'download'])->middleware('can:settings.edit');
+    Route::delete('/backups/{filename}', [BackupController::class, 'destroy'])->middleware('can:settings.edit');
 });

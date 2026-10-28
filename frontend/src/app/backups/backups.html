@@ -1,0 +1,63 @@
+<app-layout [userName]="user?.name" [userRole]="'admin'">
+  <div class="backups-container">
+    <div class="backups-header">
+      <h2>Respaldo de Base de Datos</h2>
+      <button (click)="createBackup()" class="btn-create" [disabled]="isCreating">
+        {{ isCreating ? 'Creando...' : 'Crear Respaldo' }}
+      </button>
+    </div>
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div class="restore-card">
+      <h3>Restaurar desde archivo</h3>
+      <div class="restore-controls">
+        <input type="file" accept=".sql" (change)="onFileSelected($event)" />
+        <button
+          class="btn-restore"
+          (click)="restore()"
+          [disabled]="!selectedFile || isRestoring"
+        >
+          {{ isRestoring ? 'Restaurando...' : 'Restaurar' }}
+        </button>
+      </div>
+      <p class="restore-warning">
+        La restauración reemplaza todos los datos actuales. Se recomienda crear un respaldo antes.
+      </p>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      <div class="spinner"></div>
+      <p>Cargando respaldos...</p>
+    </div>
+
+    <div *ngIf="!isLoading" class="backups-table-container">
+      <div class="no-backups" *ngIf="backups.length === 0">
+        <p>No hay respaldos creados</p>
+      </div>
+      <table class="backups-table" *ngIf="backups.length > 0">
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Fecha</th>
+            <th>Tamaño</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let backup of backups">
+            <td><code>{{ backup.filename }}</code></td>
+            <td>{{ backup.created_at }}</td>
+            <td>{{ formatSize(backup.size) }}</td>
+            <td>
+              <button class="btn-action" (click)="download(backup)">Descargar</button>
+              <button class="btn-action btn-danger" (click)="delete(backup)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</app-layout>

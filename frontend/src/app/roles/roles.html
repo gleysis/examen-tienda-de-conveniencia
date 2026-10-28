@@ -1,0 +1,135 @@
+<app-layout [userName]="user?.name" [userRole]="'admin'">
+  <div class="roles-container">
+    <div class="roles-header">
+      <h2>Roles y Permisos</h2>
+      <button (click)="showAddForm()" class="btn-create">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14 M5 12h14"></path>
+        </svg>
+        Nuevo Rol
+      </button>
+    </div>
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      <div class="spinner"></div>
+      <p>Cargando roles...</p>
+    </div>
+
+    <div *ngIf="!isLoading" class="roles-table-container">
+      <div class="no-roles" *ngIf="roles.length === 0">
+        <p>No hay roles registrados</p>
+      </div>
+      <table class="roles-table" *ngIf="roles.length > 0">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Slug</th>
+            <th>Descripción</th>
+            <th>Permisos</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let role of roles">
+            <td><strong>{{ role.name }}</strong></td>
+            <td><code>{{ role.slug }}</code></td>
+            <td>{{ role.description || '—' }}</td>
+            <td>{{ role.permissions?.length || 0 }} permisos</td>
+            <td>
+              <button class="btn-icon" (click)="openPermissions(role)" title="Permisos">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </button>
+              <button class="btn-icon" (click)="editRole(role)" title="Editar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button class="btn-icon btn-danger" (click)="deleteRole(role)" title="Eliminar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"></path>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal rol -->
+    <div *ngIf="showForm" class="modal-overlay" (click)="cancelForm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ editingRole ? 'Editar Rol' : 'Nuevo Rol' }}</h2>
+          <button (click)="cancelForm()" class="btn-close">✕</button>
+        </div>
+        <form (ngSubmit)="saveRole()">
+          <div class="form-group">
+            <label>Nombre *</label>
+            <input type="text" [(ngModel)]="roleForm.name" name="name" required />
+            <span class="field-error" *ngIf="formErrors.name">{{ formErrors.name[0] }}</span>
+          </div>
+          <div class="form-group">
+            <label>Slug *</label>
+            <input type="text" [(ngModel)]="roleForm.slug" name="slug" required placeholder="ej: supervisor" />
+            <span class="field-error" *ngIf="formErrors.slug">{{ formErrors.slug[0] }}</span>
+          </div>
+          <div class="form-group">
+            <label>Descripción</label>
+            <textarea [(ngModel)]="roleForm.description" name="description" rows="2"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" (click)="cancelForm()">Cancelar</button>
+            <button type="submit" class="btn-save">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal permisos -->
+    <div *ngIf="showPermissions && selectedRole" class="modal-overlay" (click)="cancelPermissions()">
+      <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Permisos de "{{ selectedRole.name }}"</h2>
+          <button (click)="cancelPermissions()" class="btn-close">✕</button>
+        </div>
+        <div class="permissions-groups">
+          <div class="permission-group" *ngFor="let group of permissionGroups">
+            <label class="group-header">
+              <input
+                type="checkbox"
+                [checked]="isGroupSelected(group)"
+                (change)="toggleGroup(group)"
+              />
+              <strong>{{ group.name }}</strong>
+            </label>
+            <div class="group-items">
+              <label class="permission-item" *ngFor="let permission of group.permissions">
+                <input
+                  type="checkbox"
+                  [checked]="isPermissionSelected(permission.id)"
+                  (change)="togglePermission(permission.id)"
+                />
+                <span class="permission-name">{{ permission.name }}</span>
+                <code class="permission-slug">{{ permission.slug }}</code>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" (click)="cancelPermissions()">Cancelar</button>
+          <button type="button" class="btn-save" (click)="savePermissions()" [disabled]="isSavingPermissions">
+            {{ isSavingPermissions ? 'Guardando...' : 'Guardar Permisos' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-layout>

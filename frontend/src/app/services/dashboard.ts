@@ -17,6 +17,22 @@ interface DashboardData {
   }>;
 }
 
+interface TopProductsResponse {
+  top_products: Array<{
+    product: { name: string };
+    total_quantity: number;
+    total_revenue: number;
+  }>;
+}
+
+interface SalesByPaymentResponse {
+  sales_by_payment_method: Array<{
+    payment_method: string;
+    total_transactions: number;
+    total_revenue: number;
+  }>;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -27,5 +43,13 @@ export class DashboardService {
 
   getDashboardData(): Observable<DashboardData> {
     return this.http.get<DashboardData>(`${this.apiUrl}/dashboard`);
+  }
+
+  getTopProducts(): Observable<TopProductsResponse> {
+    return this.http.get<TopProductsResponse>(`${this.apiUrl}/dashboard/top-products`);
+  }
+
+  getSalesByPaymentMethod(): Observable<SalesByPaymentResponse> {
+    return this.http.get<SalesByPaymentResponse>(`${this.apiUrl}/dashboard/sales-by-payment`);
   }
 }

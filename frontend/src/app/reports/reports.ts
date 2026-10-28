@@ -98,7 +98,7 @@ export class Reports implements OnInit, OnDestroy {
   }
 
   exportReport(kind: 'sales' | 'inventory-movements' | 'inventory-stock'): void {
-    const params: any = {};
+    const params: any = { format: 'xlsx' };
     if (kind !== 'inventory-stock') {
       if (this.dateFilter.date_from) params.date_from = this.dateFilter.date_from;
       if (this.dateFilter.date_to) params.date_to = this.dateFilter.date_to;
@@ -114,7 +114,7 @@ export class Reports implements OnInit, OnDestroy {
           const url = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `${kind}.csv`;
+          link.download = `${kind}.xlsx`;
           link.click();
           window.URL.revokeObjectURL(url);
         },

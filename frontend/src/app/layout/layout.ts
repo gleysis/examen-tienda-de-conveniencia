@@ -25,6 +25,7 @@ export class Layout {
   adminMenuItems = [
     { icon: 'home', label: 'Inicio', route: '/dashboard' },
     { icon: 'users', label: 'Usuarios', route: '/users' },
+    { icon: 'users', label: 'Roles', route: '/roles' },
     { icon: 'box', label: 'Productos', route: '/products' },
     { icon: 'archive', label: 'Inventario', route: '/inventory' },
     { icon: 'chart-bar', label: 'Reportes', route: '/reports' },
@@ -34,6 +35,7 @@ export class Layout {
     { icon: 'tag', label: 'Descuentos', route: '/discounts' },
     { icon: 'cash-register', label: 'Cajas', route: '/cash-registers' },
     { icon: 'cog', label: 'Configuración', route: '/settings' },
+    { icon: 'archive', label: 'Respaldos', route: '/backups' },
   ];
 
   sellerMenuItems = [
@@ -96,6 +98,7 @@ export class Layout {
     const routeTitles: Record<string, string> = {
       '/dashboard': 'Panel de Administrador',
       '/users': 'Usuarios',
+      '/roles': 'Roles y Permisos',
       '/products': 'Gestión de Productos',
       '/inventory': 'Inventario',
       '/reports': 'Reportes',
@@ -104,6 +107,7 @@ export class Layout {
       '/returns': 'Devoluciones',
       '/discounts': 'Descuentos',
       '/cash-registers': 'Cajas',
+      '/backups': 'Respaldos',
       '/settings': 'Configuración',
     };
     return routeTitles[this.currentRoute] || 'Tienda Express';
