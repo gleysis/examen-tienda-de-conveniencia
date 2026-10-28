@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BackupService, BackupFile } from '../services/backup';
 import { NotificationService } from '../services/notification';
@@ -23,7 +23,8 @@ export class Backups implements OnInit {
   constructor(
     private backupService: BackupService,
     private notificationService: NotificationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {
     this.user = this.authService.getCurrentUser();
   }
@@ -38,11 +39,13 @@ export class Backups implements OnInit {
       next: (response) => {
         this.backups = response.backups || [];
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading backups:', error);
         this.errorMessage = error.error?.message || 'Error al cargar respaldos';
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -59,6 +62,7 @@ export class Backups implements OnInit {
       error: (error) => {
         this.isCreating = false;
         this.errorMessage = error.error?.message || 'Error al crear el respaldo';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -76,6 +80,7 @@ export class Backups implements OnInit {
       error: (error) => {
         console.error('Error downloading backup:', error);
         this.errorMessage = 'Error al descargar el respaldo';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -89,6 +94,7 @@ export class Backups implements OnInit {
       next: () => this.loadBackups(),
       error: (error) => {
         this.errorMessage = error.error?.message || 'Error al eliminar el respaldo';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -118,10 +124,12 @@ export class Backups implements OnInit {
         this.isRestoring = false;
         this.selectedFile = null;
         this.notificationService.success(response.message || 'Base de datos restaurada');
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.isRestoring = false;
         this.errorMessage = error.error?.message || 'Error al restaurar la base de datos';
+        this.cdr.detectChanges();
       },
     });
   }

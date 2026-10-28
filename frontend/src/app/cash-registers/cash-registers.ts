@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CashRegisterService } from '../services/cash-register';
@@ -54,7 +54,8 @@ export class CashRegisters implements OnInit {
 
   constructor(
     private cashRegisterService: CashRegisterService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {
     this.user = this.authService.getCurrentUser();
   }
@@ -68,9 +69,11 @@ export class CashRegisters implements OnInit {
     this.cashRegisterService.getCurrentCashRegister().subscribe({
       next: (response) => {
         this.currentRegister = response.cash_register;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.currentRegister = null;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -83,12 +86,14 @@ export class CashRegisters implements OnInit {
         this.registers = response.data || [];
         this.meta = response.meta;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading cash registers:', error);
         this.errorMessage = error.error?.message || 'Error al cargar cajas registradoras';
         this.isLoading = false;
         this.registers = [];
+        this.cdr.detectChanges();
       },
     });
   }
@@ -119,6 +124,7 @@ export class CashRegisters implements OnInit {
       error: (error) => {
         console.error('Error opening register:', error);
         this.errorMessage = error.error?.message || 'Error al abrir la caja';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -156,6 +162,7 @@ export class CashRegisters implements OnInit {
         error: (error) => {
           console.error('Error closing register:', error);
           this.errorMessage = error.error?.message || 'Error al cerrar la caja';
+          this.cdr.detectChanges();
         },
       });
   }
@@ -185,6 +192,7 @@ export class CashRegisters implements OnInit {
       error: (error) => {
         console.error('Error reopening register:', error);
         this.errorMessage = error.error?.message || 'Error al reabrir la caja';
+        this.cdr.detectChanges();
       },
     });
   }

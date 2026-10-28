@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RoleService, Role, Permission } from '../services/role';
@@ -30,7 +30,11 @@ export class Roles implements OnInit {
   selectedPermissionIds: Set<number> = new Set();
   isSavingPermissions = false;
 
-  constructor(private roleService: RoleService, private authService: AuthService) {
+  constructor(
+    private roleService: RoleService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.user = this.authService.getCurrentUser();
   }
 
@@ -45,11 +49,13 @@ export class Roles implements OnInit {
       next: (response) => {
         this.roles = response.roles || [];
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading roles:', error);
         this.errorMessage = error.error?.message || 'Error al cargar roles';
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -59,6 +65,7 @@ export class Roles implements OnInit {
       next: (response) => {
         this.permissions = response.permissions || [];
         this.permissionGroups = this.groupPermissions(this.permissions);
+        this.cdr.detectChanges();
       },
       error: (error) => console.error('Error loading permissions:', error),
     });
@@ -108,6 +115,7 @@ export class Roles implements OnInit {
         } else {
           this.errorMessage = error.error?.message || 'Error al guardar el rol';
         }
+        this.cdr.detectChanges();
       },
     });
   }
@@ -121,6 +129,7 @@ export class Roles implements OnInit {
       next: () => this.loadRoles(),
       error: (error) => {
         this.errorMessage = error.error?.message || 'Error al eliminar el rol';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -182,6 +191,7 @@ export class Roles implements OnInit {
         error: (error) => {
           this.isSavingPermissions = false;
           this.errorMessage = error.error?.message || 'Error al guardar los permisos';
+          this.cdr.detectChanges();
         },
       });
   }

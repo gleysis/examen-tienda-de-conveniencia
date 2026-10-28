@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DiscountService } from '../services/discount';
@@ -60,7 +60,11 @@ export class Discounts implements OnInit {
 
   searchQuery = '';
 
-  constructor(private discountService: DiscountService, private authService: AuthService) {
+  constructor(
+    private discountService: DiscountService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.user = this.authService.getCurrentUser();
   }
 
@@ -79,12 +83,14 @@ export class Discounts implements OnInit {
         this.discounts = response.data || [];
         this.meta = response.meta;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading discounts:', error);
         this.errorMessage = error.error?.message || 'Error al cargar descuentos';
         this.isLoading = false;
         this.discounts = [];
+        this.cdr.detectChanges();
       },
     });
   }
@@ -167,6 +173,7 @@ export class Discounts implements OnInit {
         } else {
           this.errorMessage = error.error?.message || 'Error al guardar el descuento';
         }
+        this.cdr.detectChanges();
       },
     });
   }
@@ -181,6 +188,7 @@ export class Discounts implements OnInit {
       error: (error) => {
         console.error('Error deleting discount:', error);
         this.errorMessage = error.error?.message || 'Error al eliminar el descuento';
+        this.cdr.detectChanges();
       },
     });
   }
