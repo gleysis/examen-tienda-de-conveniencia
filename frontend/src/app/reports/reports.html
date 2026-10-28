@@ -24,6 +24,17 @@
           </svg>
           Filtrar
         </button>
+        <div class="export-buttons">
+          <button (click)="exportReport('sales')" class="btn-export" title="Exportar ventas a CSV">
+            Ventas CSV
+          </button>
+          <button (click)="exportReport('inventory-movements')" class="btn-export" title="Exportar movimientos a CSV">
+            Movimientos CSV
+          </button>
+          <button (click)="exportReport('inventory-stock')" class="btn-export" title="Exportar stock a CSV">
+            Stock CSV
+          </button>
+        </div>
       </div>
     </div>
 

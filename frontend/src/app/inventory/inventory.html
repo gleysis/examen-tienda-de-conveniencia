@@ -20,7 +20,56 @@
       {{ errorMessage }}
     </div>
 
-    <div class="inventory-table-container" *ngIf="!isLoading">
+    <div class="tabs">
+      <button class="tab" [class.active]="activeTab === 'movements'" (click)="activeTab = 'movements'">
+        Movimientos
+      </button>
+      <button class="tab" [class.active]="activeTab === 'products'" (click)="activeTab = 'products'">
+        Productos
+      </button>
+    </div>
+
+    <div class="movements-table-container" *ngIf="!isLoading && activeTab === 'movements'">
+      <div class="no-products" *ngIf="movements.length === 0">
+        <p>No hay movimientos registrados</p>
+      </div>
+      <table class="inventory-table" *ngIf="movements.length > 0">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th>Cantidad</th>
+            <th>Stock</th>
+            <th>Referencia</th>
+            <th>Usuario</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let movement of movements">
+            <td>{{ movement.created_at | date:'dd/MM/yy HH:mm' }}</td>
+            <td>{{ movement.product?.name || '—' }}</td>
+            <td>
+              <span class="movement-badge" [class.entry]="movement.type === 'entry'" [class.exit]="movement.type === 'exit'">
+                {{ getMovementTypeLabel(movement.type) }}
+              </span>
+            </td>
+            <td>{{ movement.quantity }}</td>
+            <td>{{ movement.previous_stock }} → {{ movement.new_stock }}</td>
+            <td>{{ movement.reference || '—' }}</td>
+            <td>{{ movement.user?.name || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination" *ngIf="meta.last_page > 1">
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
+        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} movimientos)</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+      </div>
+    </div>
+
+    <div class="inventory-table-container" *ngIf="!isLoading && activeTab === 'products'">
       <div class="no-products" *ngIf="products.length === 0">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>

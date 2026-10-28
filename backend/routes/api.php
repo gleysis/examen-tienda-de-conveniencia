@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\DiscountController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ReportExportController;
 use App\Http\Controllers\Api\ReturnRefundController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SaleController;
@@ -26,6 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
         Route::get('/dashboard/top-products', [DashboardController::class, 'topProducts']);
         Route::get('/dashboard/sales-by-payment', [DashboardController::class, 'salesByPaymentMethod']);
+        Route::get('/reports/sales/export', [ReportExportController::class, 'sales']);
+        Route::get('/reports/inventory-movements/export', [ReportExportController::class, 'inventoryMovements']);
+        Route::get('/reports/inventory-stock/export', [ReportExportController::class, 'inventoryStock']);
     });
 
     Route::get('/users', [UserController::class, 'index'])->middleware('can:users.view');

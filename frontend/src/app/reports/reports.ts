@@ -97,6 +97,35 @@ export class Reports implements OnInit, OnDestroy {
     console.log('Reports ngOnDestroy called');
   }
 
+  exportReport(kind: 'sales' | 'inventory-movements' | 'inventory-stock'): void {
+    const params: any = {};
+    if (kind !== 'inventory-stock') {
+      if (this.dateFilter.date_from) params.date_from = this.dateFilter.date_from;
+      if (this.dateFilter.date_to) params.date_to = this.dateFilter.date_to;
+    }
+
+    this.http
+      .get(`http://127.0.0.1:8000/api/reports/${kind}/export`, {
+        params,
+        responseType: 'blob',
+      })
+      .subscribe({
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${kind}.csv`;
+          link.click();
+          window.URL.revokeObjectURL(url);
+        },
+        error: (error) => {
+          console.error('Error exporting report:', error);
+          this.errorMessage = 'Error al exportar el reporte';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
   loadSales(): void {
     console.log('Loading sales...');
     this.isLoading = true;
