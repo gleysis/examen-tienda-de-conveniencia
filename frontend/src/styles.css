@@ -1,31 +1,44 @@
-/* Global Styles for Tienda Express POS System */
+/* Global Styles for Tienda Leiva POS System */
 
 :root {
-  /* Primary Colors - Dark Blue */
-  --color-primary: #1e3a8a;
-  --color-primary-light: #1e40af;
-  --color-primary-dark: #1e3a8a;
-  --color-primary-hover: #2563eb;
+  /* Brand palette (light) */
+  --brand-fuchsia: #e91e83;
+  --brand-purple: #6b21a8;
+  --brand-yellow: #ffc928;
+  --brand-pink: #f8bbd0;
 
-  /* Secondary Colors */
-  --color-secondary: #3b82f6;
-  --color-accent: #10b981;
+  /* Primary Colors - Fuchsia */
+  --color-primary: var(--brand-fuchsia);
+  --color-primary-light: #f0479b;
+  --color-primary-dark: #c2156b;
+  --color-primary-hover: #f0479b;
+  --color-primary-rgb: 233, 30, 131;
+
+  /* Secondary Colors - Purple */
+  --color-secondary: var(--brand-purple);
+  --color-secondary-light: #8b3fc9;
+  --color-secondary-rgb: 107, 33, 168;
+  --color-yellow: var(--brand-yellow);
+  --color-pink: var(--brand-pink);
+  --gradient-brand: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  --color-accent: #22c55e;
   --color-warning: #f59e0b;
   --color-danger: #ef4444;
   --color-danger-dark: #dc2626;
 
   /* Neutral Colors */
   --color-white: #ffffff;
-  --color-gray-50: #f8fafc;
-  --color-gray-100: #f1f5f9;
-  --color-gray-200: #e2e8f0;
-  --color-gray-300: #cbd5e1;
-  --color-gray-400: #94a3b8;
-  --color-gray-500: #64748b;
-  --color-gray-600: #475569;
-  --color-gray-700: #334155;
-  --color-gray-800: #1e293b;
-  --color-gray-900: #0f172a;
+  --color-gray-50: #fdf6fa;
+  --color-gray-100: #f8ebf4;
+  --color-gray-200: #f0ddec;
+  --color-gray-300: #dccbd8;
+  --color-gray-400: #a99bb3;
+  --color-gray-500: #756b80;
+  --color-gray-600: #5c5168;
+  --color-gray-700: #443a50;
+  --color-gray-800: #2e2339;
+  --color-gray-900: #21152f;
 
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -43,10 +56,116 @@
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px 0 rgba(33, 21, 47, 0.05);
+  --shadow-md: 0 4px 10px -2px rgba(33, 21, 47, 0.08);
+  --shadow-lg: 0 10px 20px -4px rgba(33, 21, 47, 0.1);
+  --shadow-xl: 0 20px 30px -6px rgba(33, 21, 47, 0.12);
+
+  /* Theme tokens (light) */
+  --color-background: #fff8fc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fdf2f8;
+  --color-text: #21152f;
+  --color-text-muted: #756b80;
+  --color-border: #f0ddec;
+  --color-border-subtle: #f8ebf4;
+
+  /*
+   * Mixing strengths used to adapt hard-coded component colors:
+   * light tints (pale backgrounds/borders) and dark tints (dark text).
+   * In light mode they keep the original color (100%).
+   */
+  --tint-strength: 100%;
+  --ink-strength: 100%;
+}
+
+:root[data-theme='dark'] {
+  /* Brand palette (dark) */
+  --brand-fuchsia: #ff4fa3;
+  --brand-purple: #b56ae8;
+  --brand-yellow: #ffd166;
+  --brand-pink: #d946ef;
+  --color-primary-light: #ff75b8;
+  --color-primary-dark: #e93d8f;
+  --color-primary-hover: #ff75b8;
+  --color-primary-rgb: 255, 79, 163;
+  --color-secondary-light: #c88cf0;
+  --color-secondary-rgb: 181, 106, 232;
+
+  --color-background: #11101d;
+  --color-surface: #1d1a2b;
+  --color-surface-muted: #29243b;
+  --color-text: #f8f4fc;
+  --color-text-muted: #b8aec8;
+  --color-border: #393149;
+  --color-border-subtle: #2e283f;
+
+  --color-gray-50: #29243b;
+  --color-gray-100: #2e283f;
+  --color-gray-200: #393149;
+  --color-gray-300: #4d4461;
+  --color-gray-400: #7a6f8c;
+  --color-gray-500: #b8aec8;
+  --color-gray-600: #cdc5d9;
+  --color-gray-700: #e0d9e8;
+  --color-gray-800: #ede8f3;
+  --color-gray-900: #f8f4fc;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.55);
+
+  --tint-strength: 16%;
+  --ink-strength: 35%;
+}
+
+/* Adaptive tints and inks for component colors: original color in light mode, softened in dark mode. */
+:root {
+  --ink-047857: color-mix(in srgb, #047857 var(--ink-strength), #ffffff);
+  --ink-059669: color-mix(in srgb, #059669 var(--ink-strength), #ffffff);
+  --ink-065f46: color-mix(in srgb, #065f46 var(--ink-strength), #ffffff);
+  --ink-075985: color-mix(in srgb, #075985 var(--ink-strength), #ffffff);
+  --ink-155724: color-mix(in srgb, #155724 var(--ink-strength), #ffffff);
+  --ink-15803d: color-mix(in srgb, #15803d var(--ink-strength), #ffffff);
+  --ink-166534: color-mix(in srgb, #166534 var(--ink-strength), #ffffff);
+  --ink-16a34a: color-mix(in srgb, #16a34a var(--ink-strength), #ffffff);
+  --ink-1e3a8a: color-mix(in srgb, #6b21a8 var(--ink-strength), #ffffff);
+  --ink-2e1065: color-mix(in srgb, #21152f var(--ink-strength), #ffffff);
+  --ink-312e81: color-mix(in srgb, #6b21a8 var(--ink-strength), #ffffff);
+  --ink-4c1d95: color-mix(in srgb, #6b21a8 var(--ink-strength), #ffffff);
+  --ink-721c24: color-mix(in srgb, #721c24 var(--ink-strength), #ffffff);
+  --ink-854d0e: color-mix(in srgb, #854d0e var(--ink-strength), #ffffff);
+  --ink-92400e: color-mix(in srgb, #92400e var(--ink-strength), #ffffff);
+  --ink-991b1b: color-mix(in srgb, #991b1b var(--ink-strength), #ffffff);
+  --ink-9a3412: color-mix(in srgb, #9a3412 var(--ink-strength), #ffffff);
+  --ink-b45309: color-mix(in srgb, #b45309 var(--ink-strength), #ffffff);
+  --tint-bbf7d0: color-mix(in srgb, #bbf7d0 var(--tint-strength), var(--color-surface));
+  --tint-bfdbfe: color-mix(in srgb, #bfdbfe var(--tint-strength), var(--color-surface));
+  --tint-c4b5fd: color-mix(in srgb, #f8bbd0 var(--tint-strength), var(--color-surface));
+  --tint-cbd5e1: color-mix(in srgb, #e6cfe0 var(--tint-strength), var(--color-surface));
+  --tint-d1d5db: color-mix(in srgb, #d1d5db var(--tint-strength), var(--color-surface));
+  --tint-d1fae5: color-mix(in srgb, #d1fae5 var(--tint-strength), var(--color-surface));
+  --tint-d4edda: color-mix(in srgb, #d4edda var(--tint-strength), var(--color-surface));
+  --tint-d9d4e8: color-mix(in srgb, #f0ddec var(--tint-strength), var(--color-surface));
+  --tint-dbeafe: color-mix(in srgb, #dbeafe var(--tint-strength), var(--color-surface));
+  --tint-dcfce7: color-mix(in srgb, #dcfce7 var(--tint-strength), var(--color-surface));
+  --tint-ddd6fe: color-mix(in srgb, #fbd3e6 var(--tint-strength), var(--color-surface));
+  --tint-e2e8f0: color-mix(in srgb, #f0ddec var(--tint-strength), var(--color-surface));
+  --tint-ede9fe: color-mix(in srgb, #fde4f0 var(--tint-strength), var(--color-surface));
+  --tint-eff6ff: color-mix(in srgb, #eff6ff var(--tint-strength), var(--color-surface));
+  --tint-f0eefb: color-mix(in srgb, #fdf0f7 var(--tint-strength), var(--color-surface));
+  --tint-f5f3ff: color-mix(in srgb, #fff5fa var(--tint-strength), var(--color-surface));
+  --tint-f8d7da: color-mix(in srgb, #f8d7da var(--tint-strength), var(--color-surface));
+  --tint-fca5a5: color-mix(in srgb, #fca5a5 var(--tint-strength), var(--color-surface));
+  --tint-feb2b2: color-mix(in srgb, #feb2b2 var(--tint-strength), var(--color-surface));
+  --tint-fecaca: color-mix(in srgb, #fecaca var(--tint-strength), var(--color-surface));
+  --tint-fee2e2: color-mix(in srgb, #fee2e2 var(--tint-strength), var(--color-surface));
+  --tint-fef2f2: color-mix(in srgb, #fef2f2 var(--tint-strength), var(--color-surface));
+  --tint-fef3c7: color-mix(in srgb, #fef3c7 var(--tint-strength), var(--color-surface));
+  --tint-fef9c3: color-mix(in srgb, #fef9c3 var(--tint-strength), var(--color-surface));
+  --tint-ffedd5: color-mix(in srgb, #ffedd5 var(--tint-strength), var(--color-surface));
+  --tint-fffbeb: color-mix(in srgb, #fffbeb var(--tint-strength), var(--color-surface));
 }
 
 * {
@@ -56,14 +175,15 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-gray-50);
-  color: var(--color-gray-700);
+  background-color: var(--color-background);
+  color: var(--color-text);
   line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 button {

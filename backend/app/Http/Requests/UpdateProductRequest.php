@@ -32,10 +32,12 @@ class UpdateProductRequest extends FormRequest
             'stock' => 'sometimes|integer|min:0',
             'min_stock' => 'sometimes|integer|min:0',
             'max_stock' => 'nullable|integer|min:0',
+            'expiry_date' => 'nullable|date',
             'category_id' => 'sometimes|exists:categories,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'barcode' => 'nullable|string|max:255',
             'image' => 'nullable|string',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_active' => 'boolean',
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
+use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Http\Request;
 
@@ -42,8 +43,11 @@ class RoleController extends Controller
         ];
     }
 
-    public function destroy(Role $role): array
+    public function destroy(Request $request, Role $role): array
     {
+        abort_if($role->isSystemRole(), 422, 'Los roles del sistema no se pueden eliminar.');
+        abort_unless($request->user()->holdsAllPermissions($role->permissions()->pluck('slug')), 403);
+
         $role->delete();
 
         return [
@@ -57,6 +61,16 @@ class RoleController extends Controller
             'permissions' => 'required|array',
             'permissions.*' => 'exists:permissions,id',
         ]);
+
+        $actor = $request->user();
+        $requestedSlugs = Permission::whereIn('id', $request->input('permissions'))->pluck('slug');
+
+        abort_unless(
+            $actor->holdsAllPermissions($role->permissions()->pluck('slug'))
+                && $actor->holdsAllPermissions($requestedSlugs),
+            403,
+            'No puedes asignar permisos que tú no tienes.'
+        );
 
         $role->permissions()->sync($request->input('permissions'));
 

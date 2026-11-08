@@ -8,6 +8,11 @@ export interface BackupFile {
   created_at?: string;
 }
 
+export interface RestoreResponse {
+  message: string;
+  safety_backup?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -28,10 +33,17 @@ export class BackupService {
     return this.http.get(`${this.apiUrl}/backups/${filename}`, { responseType: 'blob' });
   }
 
-  restoreBackup(file: File): Observable<{ message: string }> {
+  restoreBackup(file: File): Observable<RestoreResponse> {
     const formData = new FormData();
     formData.append('backup', file);
-    return this.http.post<{ message: string }>(`${this.apiUrl}/backups/restore`, formData);
+    return this.http.post<RestoreResponse>(`${this.apiUrl}/backups/restore`, formData);
+  }
+
+  restoreStoredBackup(filename: string): Observable<RestoreResponse> {
+    return this.http.post<RestoreResponse>(
+      `${this.apiUrl}/backups/${encodeURIComponent(filename)}/restore`,
+      {}
+    );
   }
 
   deleteBackup(filename: string): Observable<{ message: string }> {

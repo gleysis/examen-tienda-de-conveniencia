@@ -1,7 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { CategoryService } from '../services/category';
+import { AuthService } from '../services/auth';
+import { Layout } from '../layout/layout';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
 
 interface Category {
   id: number;
@@ -12,7 +17,7 @@ interface Category {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-categories',
   styleUrl: './categories.css',
   templateUrl: './categories.html',
@@ -33,8 +38,16 @@ export class Categories implements OnInit {
   };
 
   formErrors: any = {};
+  user: any;
 
-  constructor(private categoryService: CategoryService) {}
+  constructor(
+    private categoryService: CategoryService,
+    private authService: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.user = this.authService.getCurrentUser();
+  }
 
   ngOnInit(): void {
     this.loadCategories();
@@ -47,11 +60,13 @@ export class Categories implements OnInit {
       next: (response) => {
         this.categories = response.categories;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading categories:', error);
         this.errorMessage = error.error?.message || 'Error al cargar categorías';
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -107,6 +122,7 @@ export class Categories implements OnInit {
         this.loadCategories();
         this.closeForm();
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.isLoading = false;
@@ -116,6 +132,7 @@ export class Categories implements OnInit {
         } else {
           this.errorMessage = error.error?.message || 'Error al crear categoría';
         }
+        this.cdr.detectChanges();
       },
     });
   }
@@ -132,6 +149,7 @@ export class Categories implements OnInit {
         this.loadCategories();
         this.closeForm();
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.isLoading = false;
@@ -141,6 +159,7 @@ export class Categories implements OnInit {
         } else {
           this.errorMessage = error.error?.message || 'Error al actualizar categoría';
         }
+        this.cdr.detectChanges();
       },
     });
   }
@@ -152,13 +171,28 @@ export class Categories implements OnInit {
         next: () => {
           this.loadCategories();
           this.isLoading = false;
+          this.cdr.detectChanges();
         },
         error: (error) => {
           this.errorMessage = 'Error al eliminar categoría';
           this.isLoading = false;
+          this.cdr.detectChanges();
         },
       });
     }
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        this.router.navigate(['/login']);
+      },
+    });
   }
 
   onNameChange(): void {

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\CashierReportController;
+use App\Http\Controllers\Api\CashMovementController;
 use App\Http\Controllers\Api\CashRegisterController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
@@ -16,9 +18,12 @@ use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\SystemSettingController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\UserPreferenceController;
+use App\Http\Controllers\Api\WarehouseReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/settings/public', [SystemSettingController::class, 'getPublic']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -26,8 +31,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('can:reports.view')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index']);
+        Route::get('/dashboard/sales-chart', [DashboardController::class, 'salesChart']);
         Route::get('/dashboard/top-products', [DashboardController::class, 'topProducts']);
         Route::get('/dashboard/sales-by-payment', [DashboardController::class, 'salesByPaymentMethod']);
+        Route::get('/dashboard/inventory-status', [DashboardController::class, 'inventoryStatus']);
+        Route::get('/dashboard/sales-by-cashier', [DashboardController::class, 'salesByCashier']);
+        Route::get('/dashboard/sales-by-hour', [DashboardController::class, 'salesByHour']);
+        Route::get('/dashboard/alerts', [DashboardController::class, 'alerts']);
         Route::get('/reports/sales/export', [ReportExportController::class, 'sales']);
         Route::get('/reports/inventory-movements/export', [ReportExportController::class, 'inventoryMovements']);
         Route::get('/reports/inventory-stock/export', [ReportExportController::class, 'inventoryStock']);
@@ -71,8 +81,36 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/sales/{sale}', [SaleController::class, 'update'])->middleware('can:sales.edit');
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy'])->middleware('can:sales.delete');
 
+    Route::middleware('can:sales.view')->group(function () {
+        Route::get('/cashier-reports/cashiers', [CashierReportController::class, 'cashiers']);
+        Route::get('/cashier-reports/sales-overview', [CashierReportController::class, 'salesOverview']);
+        Route::get('/cashier-reports/sales', [CashierReportController::class, 'sales']);
+        Route::get('/cashier-reports/voided', [CashierReportController::class, 'voided']);
+        Route::get('/cashier-reports/daily-summary', [CashierReportController::class, 'dailySummary']);
+        Route::get('/cashier-reports/products', [CashierReportController::class, 'products']);
+    });
+
+    Route::middleware('can:cash-registers.view')->group(function () {
+        Route::get('/cashier-reports/shifts', [CashierReportController::class, 'shifts']);
+        Route::get('/cashier-reports/closures', [CashierReportController::class, 'closures']);
+        Route::get('/cashier-reports/discrepancies', [CashierReportController::class, 'discrepancies']);
+        Route::get('/cashier-reports/cash-movements', [CashierReportController::class, 'cashMovements']);
+    });
+
+    Route::post('/cash-movements', [CashMovementController::class, 'store'])->middleware('can:cash-registers.open');
+
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->middleware('can:inventory.low-stock');
     Route::get('/inventory/report', [InventoryController::class, 'report'])->middleware('can:inventory.reports');
+
+    Route::middleware('can:inventory.reports')->group(function () {
+        Route::get('/warehouse-reports/movements', [WarehouseReportController::class, 'movements']);
+        Route::get('/warehouse-reports/low-stock', [WarehouseReportController::class, 'lowStock']);
+        Route::get('/warehouse-reports/inbound', [WarehouseReportController::class, 'inbound']);
+        Route::get('/warehouse-reports/losses', [WarehouseReportController::class, 'losses']);
+        Route::get('/warehouse-reports/valuation', [WarehouseReportController::class, 'valuation']);
+        Route::get('/warehouse-reports/slow-moving', [WarehouseReportController::class, 'slowMoving']);
+        Route::get('/warehouse-reports/supplier-purchases', [WarehouseReportController::class, 'supplierPurchases']);
+    });
     Route::get('/inventory', [InventoryController::class, 'index'])->middleware('can:inventory.view');
     Route::post('/inventory', [InventoryController::class, 'store'])->middleware('can:inventory.create');
     Route::get('/inventory/{movement}', [InventoryController::class, 'show'])->middleware('can:inventory.view');
@@ -106,19 +144,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/cash-registers/{cashRegister}', [CashRegisterController::class, 'update'])->middleware('can:cash-registers.edit');
     Route::delete('/cash-registers/{cashRegister}', [CashRegisterController::class, 'destroy'])->middleware('can:cash-registers.delete');
 
-    Route::get('/settings/public', [SystemSettingController::class, 'getPublic']);
     Route::get('/settings/get', [SystemSettingController::class, 'get'])->middleware('can:settings.view');
     Route::post('/settings/set', [SystemSettingController::class, 'set'])->middleware('can:settings.edit');
     Route::get('/settings/group', [SystemSettingController::class, 'getByGroup'])->middleware('can:settings.view');
+    Route::get('/me/preferences', [UserPreferenceController::class, 'show']);
+    Route::put('/me/preferences', [UserPreferenceController::class, 'update']);
+
+    Route::get('/settings/schema', [SystemSettingController::class, 'schema']);
+    Route::put('/settings/bulk', [SystemSettingController::class, 'bulkUpdate']);
+    Route::post('/settings/reset', [SystemSettingController::class, 'reset']);
+    Route::get('/settings/history', [SystemSettingController::class, 'history'])->middleware('can:settings.view');
+    Route::post('/settings/logo', [SystemSettingController::class, 'uploadLogo'])->middleware('can:settings.edit');
+    Route::delete('/settings/logo', [SystemSettingController::class, 'deleteLogo'])->middleware('can:settings.edit');
     Route::get('/settings', [SystemSettingController::class, 'index'])->middleware('can:settings.view');
     Route::post('/settings', [SystemSettingController::class, 'store'])->middleware('can:settings.edit');
     Route::get('/settings/{setting}', [SystemSettingController::class, 'show'])->middleware('can:settings.view');
     Route::put('/settings/{setting}', [SystemSettingController::class, 'update'])->middleware('can:settings.edit');
     Route::delete('/settings/{setting}', [SystemSettingController::class, 'destroy'])->middleware('can:settings.edit');
 
-    Route::get('/backups', [BackupController::class, 'index'])->middleware('can:settings.edit');
-    Route::post('/backups', [BackupController::class, 'store'])->middleware('can:settings.edit');
-    Route::post('/backups/restore', [BackupController::class, 'restore'])->middleware('can:settings.edit');
-    Route::get('/backups/{filename}', [BackupController::class, 'download'])->middleware('can:settings.edit');
-    Route::delete('/backups/{filename}', [BackupController::class, 'destroy'])->middleware('can:settings.edit');
+    Route::middleware('can:backups.manage')->group(function () {
+        Route::get('/backups', [BackupController::class, 'index']);
+        Route::post('/backups', [BackupController::class, 'store']);
+        Route::post('/backups/restore', [BackupController::class, 'restore']);
+        Route::post('/backups/{filename}/restore', [BackupController::class, 'restoreFile']);
+        Route::get('/backups/{filename}', [BackupController::class, 'download']);
+        Route::delete('/backups/{filename}', [BackupController::class, 'destroy']);
+    });
 });

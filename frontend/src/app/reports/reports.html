@@ -1,239 +1,321 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'">
+<app-layout [userName]="user?.name" pageSubtitle="Consulta y analiza la información de tu tienda">
   <div class="reports-container">
-    <div class="reports-header">
+    <div class="filter-bar" *ngIf="visibleTabs.length > 0">
       <div class="filter-section">
         <div class="filter-group">
-          <label>Desde:</label>
-          <input
-            type="date"
-            [(ngModel)]="dateFilter.date_from"
-            class="date-input"
-          />
+          <label>{{ 'Desde:' | t }}</label>
+          <div class="input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            <input appDateInput [(ngModel)]="dateFilter.date_from" (change)="onFilter()" class="date-input" />
+          </div>
         </div>
         <div class="filter-group">
-          <label>Hasta:</label>
-          <input
-            type="date"
-            [(ngModel)]="dateFilter.date_to"
-            class="date-input"
-          />
+          <label>{{ 'Hasta:' | t }}</label>
+          <div class="input-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+            <input appDateInput [(ngModel)]="dateFilter.date_to" (change)="onFilter()" class="date-input" />
+          </div>
         </div>
         <button (click)="onFilter()" class="btn-filter">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
-          Filtrar
+          {{ 'Filtrar' | t }}
         </button>
-        <div class="export-buttons">
-          <button (click)="exportReport('sales')" class="btn-export" title="Exportar ventas a Excel">
-            Ventas Excel
-          </button>
-          <button (click)="exportReport('inventory-movements')" class="btn-export" title="Exportar movimientos a Excel">
-            Movimientos Excel
-          </button>
-          <button (click)="exportReport('inventory-stock')" class="btn-export" title="Exportar stock a Excel">
-            Stock Excel
-          </button>
-        </div>
       </div>
+      <button class="btn-export" (click)="exportCurrentTab()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13l6 6M15 13l-6 6" />
+        </svg>
+        {{ 'Exportar Excel' | t }}
+      </button>
     </div>
 
     <div class="error-message" *ngIf="errorMessage">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
-    <div class="tabs">
+    <nav class="group-tabs" *ngIf="visibleTabs.length > 0">
       <button
-        class="tab-button"
-        [class.active]="activeTab === 'sales'"
-        (click)="setTab('sales')"
+        *ngFor="let group of visibleGroups"
+        class="group-tab"
+        [class.active]="activeGroup === group.label"
+        (click)="setGroup(group)"
       >
-        Ventas
+        <svg *ngIf="group.label === 'Ventas'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1.5" /><circle cx="19" cy="21" r="1.5" />
+          <path d="M2 3h3l2.6 12.4a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
+        </svg>
+        <svg *ngIf="group.label === 'Caja'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="6" width="20" height="12" rx="2" />
+          <path d="M2 10h20M6 15h4" />
+        </svg>
+        <svg *ngIf="group.label === 'Almacén'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" />
+          <path d="M3 8l9 5 9-5M12 13v8" />
+        </svg>
+        {{ group.label }}
       </button>
+    </nav>
+
+    <nav class="sub-tabs" *ngIf="visibleTabs.length > 0">
       <button
+        *ngFor="let tab of currentGroupTabs"
         class="tab-button"
-        [class.active]="activeTab === 'inventory'"
-        (click)="setTab('inventory')"
+        [class.active]="activeTab === tab.key"
+        (click)="setTab(tab.key)"
       >
-        Inventario
+        {{ tab.label }}
       </button>
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'returns'"
-        (click)="setTab('returns')"
-      >
-        Devoluciones
-      </button>
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'products'"
-        (click)="setTab('products')"
-      >
-        Productos
-      </button>
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'top-products'"
-        (click)="setTab('top-products')"
-      >
-        Top Productos
-      </button>
-      <button
-        class="tab-button"
-        [class.active]="activeTab === 'payment-methods'"
-        (click)="setTab('payment-methods')"
-      >
-        Métodos de Pago
-      </button>
+    </nav>
+
+    <div class="report-panel" *ngIf="visibleTabs.length > 0">
+
+    <div class="tab-content" *ngIf="visibleTabs.length === 0">
+      <p class="no-reports">{{ 'No tienes reportes disponibles.' | t }}</p>
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'sales'">
-      <div class="summary-cards" *ngIf="salesSummary">
-        <div class="summary-card">
-          <h3>Total Ventas</h3>
-          <p class="summary-value">${{ salesSummary.total_revenue?.toFixed(2) || '0.00' }}</p>
+      <div class="summary-cards" *ngIf="salesOverview">
+        <div class="summary-card kpi">
+          <span class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="9" cy="21" r="1.5" /><circle cx="19" cy="21" r="1.5" />
+              <path d="M2 3h3l2.6 12.4a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L22 7H6" />
+            </svg>
+          </span>
+          <div>
+            <h3>{{ 'Total de Ventas' | t }}</h3>
+            <p class="summary-value">{{ formatMoney(salesOverview.summary?.total) }}</p>
+          </div>
         </div>
-        <div class="summary-card">
-          <h3>Total Transacciones</h3>
-          <p class="summary-value">{{ salesSummary.total_sales }}</p>
+        <div class="summary-card kpi">
+          <span class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12a9 9 0 1 1-3-6.7" />
+              <path d="M21 3v6h-6" />
+            </svg>
+          </span>
+          <div>
+            <h3>{{ 'Total Transacciones' | t }}</h3>
+            <p class="summary-value">{{ salesOverview.summary?.transactions }}</p>
+          </div>
         </div>
-        <div class="summary-card">
-          <h3>Producto más vendido</h3>
-          <p class="summary-value">N/A</p>
+        <div class="summary-card kpi">
+          <span class="kpi-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4z" />
+              <path d="M7 6H4a3 3 0 0 0 3 5M17 6h3a3 3 0 0 1-3 5" />
+            </svg>
+          </span>
+          <div>
+            <h3>{{ 'Producto Más Vendido' | t }}</h3>
+            <p class="summary-value product-name">{{ topProductName }}</p>
+          </div>
         </div>
       </div>
 
       <div class="charts-section">
         <div class="chart-card">
-          <h3>Ventas por día</h3>
-          <div class="chart-placeholder">
-            <svg viewBox="0 0 400 200" class="line-chart">
-              <polyline points="20,150 80,120 140,90 200,110 260,70 320,100 380,80" fill="none" stroke="#1e3a8a" stroke-width="3"></polyline>
-              <circle cx="20" cy="150" r="4" fill="#1e3a8a"></circle>
-              <circle cx="80" cy="120" r="4" fill="#1e3a8a"></circle>
-              <circle cx="140" cy="90" r="4" fill="#1e3a8a"></circle>
-              <circle cx="200" cy="110" r="4" fill="#1e3a8a"></circle>
-              <circle cx="260" cy="70" r="4" fill="#1e3a8a"></circle>
-              <circle cx="320" cy="100" r="4" fill="#1e3a8a"></circle>
-              <circle cx="380" cy="80" r="4" fill="#1e3a8a"></circle>
-            </svg>
+          <div class="chart-head">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 17l6-6 4 4 8-8" /><path d="M15 7h6v6" />
+              </svg>
+              {{ 'Ventas por Día' | t }}
+            </h3>
+            <select class="chart-select" [(ngModel)]="salesChartDays">
+              <option [ngValue]="7">{{ 'Últimos 7 días' | t }}</option>
+              <option [ngValue]="15">{{ 'Últimos 15 días' | t }}</option>
+              <option [ngValue]="30">{{ 'Últimos 30 días' | t }}</option>
+            </select>
           </div>
+          <svg
+            *ngIf="dailySeries.length > 0"
+            class="sales-line-chart"
+            [attr.viewBox]="'0 0 ' + chartW + ' ' + chartH"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id="salesArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#E91E83" stop-opacity="0.28" />
+                <stop offset="100%" stop-color="#E91E83" stop-opacity="0.02" />
+              </linearGradient>
+            </defs>
+            <g *ngFor="let t of yTicks">
+              <line [attr.x1]="padL" [attr.x2]="chartW - padR" [attr.y1]="t.y" [attr.y2]="t.y" class="grid-line" />
+              <text [attr.x]="padL - 8" [attr.y]="t.y + 3" class="axis-label" text-anchor="end">{{ t.label }}</text>
+            </g>
+            <path [attr.d]="areaPath" fill="url(#salesArea)" />
+            <path [attr.d]="linePath" fill="none" stroke="#E91E83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
+            <circle *ngFor="let pt of linePoints" [attr.cx]="pt.x" [attr.cy]="pt.y" r="4" fill="#E91E83" stroke="#fff" stroke-width="1.5">
+              <title>{{ pt.p.date }} — {{ formatMoney(pt.p.total) }}</title>
+            </circle>
+            <line [attr.x1]="padL" [attr.x2]="chartW - padR" [attr.y1]="chartBottom" [attr.y2]="chartBottom" class="axis-line" />
+            <text *ngFor="let l of xLabels" [attr.x]="l.x" [attr.y]="chartH - 6" class="axis-label" text-anchor="middle">{{ l.label }}</text>
+          </svg>
+          <p class="no-data" *ngIf="salesOverview && dailySeries.length === 0">
+            {{ 'No hay ventas en el período seleccionado.' | t }}
+          </p>
         </div>
 
         <div class="chart-card">
-          <h3>Ventas por categoría</h3>
-          <div class="chart-placeholder">
-            <svg viewBox="0 0 200 200" class="donut-chart">
-              <circle cx="100" cy="100" r="60" fill="none" stroke="#1e3a8a" stroke-width="20" stroke-dasharray="100 277" stroke-dashoffset="0"></circle>
-              <circle cx="100" cy="100" r="60" fill="none" stroke="#3b82f6" stroke-width="20" stroke-dasharray="70 277" stroke-dashoffset="-100"></circle>
-              <circle cx="100" cy="100" r="60" fill="none" stroke="#10b981" stroke-width="20" stroke-dasharray="50 277" stroke-dashoffset="-170"></circle>
-              <circle cx="100" cy="100" r="60" fill="none" stroke="#f59e0b" stroke-width="20" stroke-dasharray="57 277" stroke-dashoffset="-220"></circle>
-            </svg>
+          <div class="chart-head">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3a9 9 0 1 0 9 9h-9V3z" /><path d="M15 3.5A9 9 0 0 1 20.5 9H15V3.5z" />
+              </svg>
+              {{ 'Ventas por Categoría' | t }}
+            </h3>
           </div>
+          <div class="donut-row" *ngIf="categorySlices.length > 0">
+            <div class="donut" [style.background]="categoryDonut">
+              <div class="donut-center">
+                <strong>{{ formatMoney(categoryTotal) }}</strong>
+                <span>{{ 'Total' | t }}</span>
+              </div>
+            </div>
+            <ul class="donut-legend">
+              <li *ngFor="let s of categorySlices">
+                <i [style.background]="s.color"></i>
+                <span class="legend-name">{{ s.name }}</span>
+                <b>{{ s.percentage | number:'1.0-1' }}%</b>
+              </li>
+            </ul>
+          </div>
+          <p class="no-data" *ngIf="salesOverview && categorySlices.length === 0">
+            {{ 'No hay ventas por categoría en el período seleccionado.' | t }}
+          </p>
         </div>
       </div>
+
+
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'inventory'">
       <div class="summary-cards" *ngIf="inventorySummary">
         <div class="summary-card">
-          <h3>Total Productos</h3>
+          <h3>{{ 'Total Productos' | t }}</h3>
           <p class="summary-value">{{ inventorySummary.total_products }}</p>
         </div>
         <div class="summary-card">
-          <h3>Total Stock</h3>
+          <h3>{{ 'Total Stock' | t }}</h3>
           <p class="summary-value">{{ inventorySummary.total_stock }}</p>
         </div>
         <div class="summary-card warning">
-          <h3>Stock Bajo</h3>
+          <h3>{{ 'Stock Bajo' | t }}</h3>
           <p class="summary-value">{{ inventorySummary.low_stock_count }}</p>
         </div>
       </div>
 
-      <div class="export-section">
-        <button class="btn-export">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8"></path>
-          </svg>
-          Exportar PDF
-        </button>
-      </div>
+
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'returns'">
       <div class="summary-cards" *ngIf="returnsSummary">
         <div class="summary-card">
-          <h3>Total Devoluciones</h3>
+          <h3>{{ 'Total Devoluciones' | t }}</h3>
           <p class="summary-value">{{ returnsSummary.total_returns }}</p>
         </div>
         <div class="summary-card">
-          <h3>Total Reembolsado</h3>
-          <p class="summary-value">${{ returnsSummary.total_refunded?.toFixed(2) || '0.00' }}</p>
+          <h3>{{ 'Total Reembolsado' | t }}</h3>
+          <p class="summary-value">{{ returnsSummary.total_refunded | money }}</p>
         </div>
         <div class="summary-card">
-          <h3>Procesadas</h3>
+          <h3>{{ 'Procesadas' | t }}</h3>
           <p class="summary-value">{{ returnsSummary.processed_returns }}</p>
         </div>
         <div class="summary-card warning">
-          <h3>Pendientes</h3>
+          <h3>{{ 'Pendientes' | t }}</h3>
           <p class="summary-value">{{ returnsSummary.pending_returns }}</p>
         </div>
       </div>
 
       <div class="returns-list" *ngIf="returns.length > 0">
-        <h3>Lista de Devoluciones</h3>
+        <h3>{{ 'Lista de Devoluciones' | t }}</h3>
         <table class="data-table">
           <thead>
             <tr>
-              <th>Número</th>
-              <th>Monto</th>
-              <th>Estado</th>
-              <th>Fecha</th>
+              <th>{{ 'Número' | t }}</th>
+              <th>{{ 'Monto' | t }}</th>
+              <th>{{ 'Estado' | t }}</th>
+              <th>{{ 'Fecha' | t }}</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let ret of returns">
               <td>{{ ret.return_number }}</td>
-              <td>${{ ret.refund_amount?.toFixed(2) }}</td>
+              <td>{{ ret.refund_amount | money }}</td>
               <td>
-                <span class="status-badge" [class]="ret.status">{{ getStatusLabel(ret.status) }}</span>
+                <span class="status-badge" [class]="ret.status">{{ getStatusLabel(ret.status) | t }}</span>
               </td>
-              <td>{{ ret.created_at | date:'short' }}</td>
+              <td>{{ ret.created_at | appDate:'datetime' }}</td>
             </tr>
           </tbody>
         </table>
       </div>
+
+
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'products'">
+      <div class="report-filters">
+        <select [(ngModel)]="stockFilters.category_id" class="filter-select">
+          <option value="">{{ 'Todas las categorías' | t }}</option>
+          <option *ngFor="let c of reportCategories" [value]="c.id">{{ c.name }}</option>
+        </select>
+        <select [(ngModel)]="stockFilters.supplier_id" class="filter-select">
+          <option value="">{{ 'Todos los proveedores' | t }}</option>
+          <option *ngFor="let s of reportSuppliers" [value]="s.id">{{ s.name }}</option>
+        </select>
+        <select [(ngModel)]="stockFilters.status" class="filter-select">
+          <option value="">{{ 'Todos los estados' | t }}</option>
+          <option value="ok">{{ 'Normal' | t }}</option>
+          <option value="low">{{ 'Stock bajo' | t }}</option>
+          <option value="over">{{ 'Sobre máximo' | t }}</option>
+        </select>
+        <input
+          type="text"
+          [(ngModel)]="stockFilters.search"
+          [attr.placeholder]="'Buscar producto o SKU...' | t"
+          class="filter-input"
+        />
+      </div>
+
       <div class="summary-cards" *ngIf="inventorySummary">
         <div class="summary-card">
-          <h3>Total Productos</h3>
+          <h3>{{ 'Total Productos' | t }}</h3>
           <p class="summary-value">{{ inventorySummary.total_products }}</p>
         </div>
         <div class="summary-card">
-          <h3>Total Stock</h3>
+          <h3>{{ 'Total Stock' | t }}</h3>
           <p class="summary-value">{{ inventorySummary.total_stock }}</p>
         </div>
         <div class="summary-card">
-          <h3>Valor Total</h3>
-          <p class="summary-value">${{ inventorySummary.total_value?.toFixed(2) || '0.00' }}</p>
+          <h3>{{ 'Valor Total' | t }}</h3>
+          <p class="summary-value">{{ inventorySummary.total_value | money }}</p>
         </div>
         <div class="summary-card warning">
-          <h3>Stock Bajo</h3>
+          <h3>{{ 'Stock Bajo' | t }}</h3>
           <p class="summary-value">{{ inventorySummary.low_stock_count }}</p>
         </div>
       </div>
 
       <div class="low-stock-products" *ngIf="inventorySummary?.low_stock_products?.length > 0">
-        <h3>Productos con Stock Bajo</h3>
+        <h3>{{ 'Productos con Stock Bajo' | t }}</h3>
         <table class="data-table">
           <thead>
             <tr>
-              <th>Producto</th>
-              <th>Stock Actual</th>
-              <th>Stock Mínimo</th>
-              <th>Categoría</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'Stock Actual' | t }}</th>
+              <th>{{ 'Stock Mínimo' | t }}</th>
+              <th>{{ 'Categoría' | t }}</th>
             </tr>
           </thead>
           <tbody>
@@ -241,34 +323,454 @@
               <td>{{ product.name }}</td>
               <td>{{ product.stock }}</td>
               <td>{{ product.min_stock }}</td>
-              <td>{{ product.category?.name || 'N/A' }}</td>
+              <td>{{ product.category?.name || ('N/A' | t) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <div class="products-table" *ngIf="inventoryProducts.length > 0">
+        <h3>{{ 'Listado de Productos' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'Categoría' | t }}</th>
+              <th>{{ 'Stock' | t }}</th>
+              <th>{{ 'Stock Mínimo' | t }}</th>
+              <th>{{ 'Costo' | t }}</th>
+              <th>{{ 'Precio' | t }}</th>
+              <th>{{ 'Valor en Stock' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let product of filteredStockProducts"
+              [class.low-stock-row]="getStockStatus(product) === 'low'"
+            >
+              <td>{{ product.sku }}</td>
+              <td>{{ product.name }}</td>
+              <td>{{ product.category?.name || ('N/A' | t) }}</td>
+              <td>{{ product.stock }}</td>
+              <td>{{ product.min_stock ?? ('N/A' | t) }}</td>
+              <td>{{ product.cost | money }}</td>
+              <td>{{ product.price | money }}</td>
+              <td>{{ (product.stock * product.cost) | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'movements'">
+      <div class="report-filters">
+        <select [(ngModel)]="movementFilters.type" (change)="onFilter()" class="filter-select">
+          <option value="">{{ 'Todos los tipos' | t }}</option>
+          <option value="entry">{{ 'Entradas' | t }}</option>
+          <option value="exit">{{ 'Salidas' | t }}</option>
+        </select>
+        <input
+          type="text"
+          [(ngModel)]="movementFilters.product"
+          (keyup.enter)="onFilter()"
+          [attr.placeholder]="'Producto o SKU...' | t"
+          class="filter-input"
+        />
+        <input
+          type="text"
+          [(ngModel)]="movementFilters.user"
+          (keyup.enter)="onFilter()"
+          [attr.placeholder]="'Usuario...' | t"
+          class="filter-input"
+        />
+      </div>
+
+      <div class="summary-cards" *ngIf="warehouseData['movements']">
+        <div class="summary-card">
+          <h3>{{ 'Movimientos' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['movements'].summary?.total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Unidades Entrada' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['movements'].summary?.entries }}</p>
+        </div>
+        <div class="summary-card warning">
+          <h3>{{ 'Unidades Salida' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['movements'].summary?.exits }}</p>
+        </div>
+      </div>
+
+      <div class="movements-table" *ngIf="warehouseData['movements']?.movements?.length > 0">
+        <h3>{{ 'Movimientos de Almacén' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Tipo' | t }}</th>
+              <th>{{ 'Cantidad' | t }}</th>
+              <th>{{ 'Stock Anterior' | t }}</th>
+              <th>{{ 'Stock Nuevo' | t }}</th>
+              <th>{{ 'Usuario' | t }}</th>
+              <th>{{ 'Referencia' | t }}</th>
+              <th>{{ 'Notas' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of warehouseData['movements'].movements">
+              <td>{{ m.created_at | appDate:'datetime' }}</td>
+              <td>{{ m.product?.name }}</td>
+              <td>{{ m.product?.sku }}</td>
+              <td><span class="type-badge" [class]="m.type">{{ getMovementTypeLabel(m.type) | t }}</span></td>
+              <td>{{ m.quantity }}</td>
+              <td>{{ m.previous_stock }}</td>
+              <td>{{ m.new_stock }}</td>
+              <td>{{ m.user?.name }}</td>
+              <td>{{ m.reference || '—' }}</td>
+              <td>{{ m.notes || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'low-stock'">
+      <div class="summary-cards" *ngIf="warehouseData['low-stock']">
+        <div class="summary-card warning">
+          <h3>{{ 'Productos Bajo Mínimo' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['low-stock'].summary?.count }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Unidades Faltantes' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['low-stock'].summary?.missing_total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Costo Estimado Reposición' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['low-stock'].summary?.estimated_cost | money }}</p>
+        </div>
+      </div>
+
+      <div class="low-stock-table" *ngIf="warehouseData['low-stock']?.products?.length > 0">
+        <h3>{{ 'Productos que Necesitan Reposición' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'Categoría' | t }}</th>
+              <th>{{ 'Proveedor' | t }}</th>
+              <th>{{ 'Stock Actual' | t }}</th>
+              <th>{{ 'Stock Mínimo' | t }}</th>
+              <th>{{ 'Faltante' | t }}</th>
+              <th>{{ 'Sugerido Compra' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of warehouseData['low-stock'].products" class="low-stock-row">
+              <td>{{ p.sku }}</td>
+              <td>{{ p.name }}</td>
+              <td>{{ p.category?.name || ('N/A' | t) }}</td>
+              <td>{{ p.supplier?.name || ('N/A' | t) }}</td>
+              <td>{{ p.stock }}</td>
+              <td>{{ p.min_stock }}</td>
+              <td>{{ p.missing_qty }}</td>
+              <td>{{ p.suggested_qty }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="no-data" *ngIf="warehouseData['low-stock'] && !warehouseData['low-stock'].products?.length">
+        {{ 'No hay productos bajo el stock mínimo.' | t }}
+      </p>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'inbound'">
+      <div class="summary-cards" *ngIf="warehouseData['inbound']">
+        <div class="summary-card">
+          <h3>{{ 'Recepciones' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['inbound'].summary?.total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Unidades Recibidas' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['inbound'].summary?.units }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Costo Total' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['inbound'].summary?.total_cost | money }}</p>
+        </div>
+      </div>
+
+      <div class="inbound-table" *ngIf="warehouseData['inbound']?.movements?.length > 0">
+        <h3>{{ 'Entradas de Mercancía' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Cantidad' | t }}</th>
+              <th>{{ 'Costo Unit.' | t }}</th>
+              <th>{{ 'Costo Total' | t }}</th>
+              <th>{{ 'Usuario' | t }}</th>
+              <th>{{ 'Referencia' | t }}</th>
+              <th>{{ 'Notas' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of warehouseData['inbound'].movements">
+              <td>{{ m.created_at | appDate:'datetime' }}</td>
+              <td>{{ m.product?.name }}</td>
+              <td>{{ m.product?.sku }}</td>
+              <td>{{ m.quantity }}</td>
+              <td>{{ m.unit_cost | money }}</td>
+              <td>{{ m.total_cost | money }}</td>
+              <td>{{ m.user?.name }}</td>
+              <td>{{ m.reference || '—' }}</td>
+              <td>{{ m.notes || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="no-data" *ngIf="warehouseData['inbound'] && !warehouseData['inbound'].movements?.length">
+        {{ 'No hay entradas de mercancía en el período seleccionado.' | t }}
+      </p>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'losses'">
+      <div class="summary-cards" *ngIf="warehouseData['losses']">
+        <div class="summary-card warning">
+          <h3>{{ 'Registros' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['losses'].summary?.total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Unidades Perdidas' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['losses'].summary?.units }}</p>
+        </div>
+        <div class="summary-card danger">
+          <h3>{{ 'Valor de la Pérdida' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['losses'].summary?.loss_value | money }}</p>
+        </div>
+      </div>
+
+      <div class="losses-table" *ngIf="warehouseData['losses']?.movements?.length > 0">
+        <h3>{{ 'Mermas, Daños y Pérdidas' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Cantidad' | t }}</th>
+              <th>{{ 'Valor Pérdida' | t }}</th>
+              <th>{{ 'Usuario' | t }}</th>
+              <th>{{ 'Referencia' | t }}</th>
+              <th>{{ 'Motivo' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of warehouseData['losses'].movements">
+              <td>{{ m.created_at | appDate:'datetime' }}</td>
+              <td>{{ m.product?.name }}</td>
+              <td>{{ m.product?.sku }}</td>
+              <td>{{ m.quantity }}</td>
+              <td>{{ m.loss_value | money }}</td>
+              <td>{{ m.user?.name }}</td>
+              <td>{{ m.reference || '—' }}</td>
+              <td>{{ m.notes || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="no-data" *ngIf="warehouseData['losses'] && !warehouseData['losses'].movements?.length">
+        {{ 'No hay mermas ni pérdidas registradas en el período seleccionado.' | t }}
+      </p>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'valuation'">
+      <div class="summary-cards" *ngIf="warehouseData['valuation']">
+        <div class="summary-card">
+          <h3>{{ 'Valor Total Inventario' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['valuation'].total_value | money }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Unidades Totales' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['valuation'].total_stock }}</p>
+        </div>
+      </div>
+
+      <div class="valuation-table" *ngIf="warehouseData['valuation']?.by_category?.length > 0">
+        <h3>{{ 'Valor por Categoría' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Categoría' | t }}</th>
+              <th>{{ 'Unidades' | t }}</th>
+              <th>{{ 'Valor Total' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of warehouseData['valuation'].by_category">
+              <td>{{ c.category }}</td>
+              <td>{{ c.total_stock }}</td>
+              <td>{{ c.total_value | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="valuation-table" *ngIf="warehouseData['valuation']?.items?.length > 0">
+        <h3>{{ 'Detalle por Producto' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'Categoría' | t }}</th>
+              <th>{{ 'Stock' | t }}</th>
+              <th>{{ 'Costo Unit.' | t }}</th>
+              <th>{{ 'Valor Total' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let i of warehouseData['valuation'].items">
+              <td>{{ i.sku }}</td>
+              <td>{{ i.name }}</td>
+              <td>{{ i.category }}</td>
+              <td>{{ i.stock }}</td>
+              <td>{{ i.cost | money }}</td>
+              <td>{{ i.total_value | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'slow-moving'">
+      <div class="summary-cards" *ngIf="warehouseData['slow-moving']">
+        <div class="summary-card warning">
+          <h3>{{ 'Sin Movimiento +30 Días' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['slow-moving'].summary?.over_30_days }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Valor Inmovilizado' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['slow-moving'].summary?.idle_value | money }}</p>
+        </div>
+      </div>
+
+      <div class="slow-moving-table" *ngIf="warehouseData['slow-moving']?.items?.length > 0">
+        <h3>{{ 'Productos por Días sin Movimiento' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'Categoría' | t }}</th>
+              <th>{{ 'Stock' | t }}</th>
+              <th>{{ 'Último Movimiento' | t }}</th>
+              <th>{{ 'Días sin Movimiento' | t }}</th>
+              <th>{{ 'Valor Inmovilizado' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let i of warehouseData['slow-moving'].items" [class.low-stock-row]="i.days_idle >= 30">
+              <td>{{ i.sku }}</td>
+              <td>{{ i.name }}</td>
+              <td>{{ i.category }}</td>
+              <td>{{ i.stock }}</td>
+              <td>{{ i.last_movement_at ? (i.last_movement_at | appDate:'datetime') : ('Nunca' | t) }}</td>
+              <td>{{ i.days_idle }}</td>
+              <td>{{ i.idle_value | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'supplier-purchases'">
+      <div class="summary-cards" *ngIf="warehouseData['supplier-purchases']">
+        <div class="summary-card">
+          <h3>{{ 'Unidades Ingresadas' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['supplier-purchases'].summary?.units }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Costo Total' | t }}</h3>
+          <p class="summary-value">{{ warehouseData['supplier-purchases'].summary?.total_cost | money }}</p>
+        </div>
+      </div>
+
+      <div class="suppliers-table" *ngIf="warehouseData['supplier-purchases']?.suppliers?.length > 0">
+        <h3>{{ 'Entradas por Proveedor' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Proveedor' | t }}</th>
+              <th>{{ 'Entradas' | t }}</th>
+              <th>{{ 'Productos Distintos' | t }}</th>
+              <th>{{ 'Unidades' | t }}</th>
+              <th>{{ 'Costo Total' | t }}</th>
+              <th>{{ 'Última Entrada' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of warehouseData['supplier-purchases'].suppliers">
+              <td>{{ s.supplier }}</td>
+              <td>{{ s.entries }}</td>
+              <td>{{ s.products }}</td>
+              <td>{{ s.units }}</td>
+              <td>{{ s.total_cost | money }}</td>
+              <td>{{ s.last_entry ? (s.last_entry | appDate:'datetime') : '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="no-data" *ngIf="warehouseData['supplier-purchases'] && !warehouseData['supplier-purchases'].suppliers?.length">
+        {{ 'No hay entradas de mercancía en el período seleccionado.' | t }}
+      </p>
+
+
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'top-products'">
       <div class="summary-cards" *ngIf="topProductsData">
         <div class="summary-card">
-          <h3>Total Unidades Vendidas</h3>
+          <h3>{{ 'Total Unidades Vendidas' | t }}</h3>
           <p class="summary-value">{{ getTotalQuantitySold() }}</p>
         </div>
         <div class="summary-card">
-          <h3>Total Ingresos</h3>
-          <p class="summary-value">${{ getTotalRevenue()?.toFixed(2) || '0.00' }}</p>
+          <h3>{{ 'Total Ingresos' | t }}</h3>
+          <p class="summary-value">{{ getTotalRevenue() | money }}</p>
         </div>
       </div>
 
       <div class="top-products-list" *ngIf="topProductsData?.top_products?.length > 0">
-        <h3>Top 10 Productos Más Vendidos</h3>
+        <h3>{{ 'Top 10 Productos Más Vendidos' | t }}</h3>
         <table class="data-table">
           <thead>
             <tr>
-              <th>Producto</th>
-              <th>SKU</th>
-              <th>Unidades Vendidas</th>
-              <th>Ingresos Totales</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Unidades Vendidas' | t }}</th>
+              <th>{{ 'Ingresos Totales' | t }}</th>
             </tr>
           </thead>
           <tbody>
@@ -276,51 +778,607 @@
               <td>{{ item.product?.name }}</td>
               <td>{{ item.product?.sku }}</td>
               <td>{{ item.total_quantity }}</td>
-              <td>${{ item.total_revenue?.toFixed(2) }}</td>
+              <td>{{ item.total_revenue | money }}</td>
             </tr>
           </tbody>
         </table>
       </div>
+
+
     </div>
 
     <div class="tab-content" *ngIf="activeTab === 'payment-methods'">
       <div class="summary-cards" *ngIf="paymentMethodsData">
         <div class="summary-card">
-          <h3>Total Transacciones</h3>
+          <h3>{{ 'Total Transacciones' | t }}</h3>
           <p class="summary-value">{{ getTotalTransactions() }}</p>
         </div>
         <div class="summary-card">
-          <h3>Total Ingresos</h3>
-          <p class="summary-value">${{ getTotalPaymentRevenue()?.toFixed(2) || '0.00' }}</p>
+          <h3>{{ 'Total Ingresos' | t }}</h3>
+          <p class="summary-value">{{ getTotalPaymentRevenue() | money }}</p>
         </div>
       </div>
 
       <div class="payment-methods-list" *ngIf="paymentMethodsData?.sales_by_payment_method?.length > 0">
-        <h3>Ventas por Método de Pago</h3>
+        <h3>{{ 'Ventas por Método de Pago' | t }}</h3>
         <table class="data-table">
           <thead>
             <tr>
-              <th>Método de Pago</th>
-              <th>Transacciones</th>
-              <th>Ingresos Totales</th>
-              <th>Promedio por Transacción</th>
+              <th>{{ 'Método de Pago' | t }}</th>
+              <th>{{ 'Transacciones' | t }}</th>
+              <th>{{ 'Ingresos Totales' | t }}</th>
+              <th>{{ 'Promedio por Transacción' | t }}</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let item of paymentMethodsData.sales_by_payment_method">
-              <td>{{ getPaymentMethodLabel(item.payment_method) }}</td>
+              <td>{{ getPaymentMethodLabel(item.payment_method) | t }}</td>
               <td>{{ item.total_transactions }}</td>
-              <td>${{ item.total_revenue?.toFixed(2) }}</td>
-              <td>${{ (item.total_revenue / item.total_transactions)?.toFixed(2) }}</td>
+              <td>{{ item.total_revenue | money }}</td>
+              <td>{{ (item.total_revenue / item.total_transactions) | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'cashier-sales'">
+      <div class="report-filters">
+        <select
+          *ngIf="cashiers.length > 1"
+          [(ngModel)]="cashierFilters.user_id"
+          (change)="onFilter()"
+          class="filter-select"
+        >
+          <option value="">{{ 'Todos los cajeros' | t }}</option>
+          <option *ngFor="let c of cashiers" [value]="c.id">{{ c.name }}</option>
+        </select>
+        <input
+          type="text"
+          [(ngModel)]="cashierFilters.invoice"
+          (keyup.enter)="onFilter()"
+          [attr.placeholder]="'Nº de factura...' | t"
+          class="filter-input"
+        />
+        <select [(ngModel)]="cashierFilters.payment_method" (change)="onFilter()" class="filter-select">
+          <option value="">{{ 'Todos los métodos' | t }}</option>
+          <option value="cash">{{ 'Efectivo' | t }}</option>
+          <option value="card">{{ 'Tarjeta' | t }}</option>
+          <option value="transfer">{{ 'Transferencia' | t }}</option>
+        </select>
+        <select [(ngModel)]="cashierFilters.status" (change)="onFilter()" class="filter-select">
+          <option value="">{{ 'Todos los estados' | t }}</option>
+          <option value="completed">{{ 'Completada' | t }}</option>
+          <option value="cancelled">{{ 'Anulada' | t }}</option>
+          <option value="refunded">{{ 'Devuelta' | t }}</option>
+        </select>
+      </div>
+
+      <div class="summary-cards" *ngIf="cashierData['cashier-sales']">
+        <div class="summary-card">
+          <h3>{{ 'Facturas' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-sales'].summary?.count }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Subtotal' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-sales'].summary?.subtotal | money }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Descuentos' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-sales'].summary?.discount | money }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Total Vendido' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-sales'].summary?.total | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['cashier-sales'] && !cashierData['cashier-sales']?.sales?.length">
+        {{ 'No hay ventas en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['cashier-sales']?.sales?.length > 0">
+        <h3>{{ 'Ventas por Cajero' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Factura' | t }}</th>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Cajero' | t }}</th>
+              <th>{{ 'Items' | t }}</th>
+              <th>{{ 'Subtotal' | t }}</th>
+              <th>{{ 'Descuento' | t }}</th>
+              <th>{{ 'Total' | t }}</th>
+              <th>{{ 'Método' | t }}</th>
+              <th>{{ 'Estado' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of cashierData['cashier-sales'].sales">
+              <td>{{ s.invoice_number }}</td>
+              <td>{{ s.created_at | appDate:'datetime' }}</td>
+              <td>{{ s.user?.name }}</td>
+              <td>{{ s.items_count }}</td>
+              <td>{{ s.subtotal | money }}</td>
+              <td>{{ s.discount | money }}</td>
+              <td>{{ s.total | money }}</td>
+              <td>{{ getPaymentMethodLabel(s.payment_method) | t }}</td>
+              <td><span class="type-badge" [class]="s.status">{{ getSaleStatusLabel(s.status) | t }}</span></td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
+    <div class="tab-content" *ngIf="activeTab === 'daily-summary'">
+      <div class="report-filters">
+        <select
+          *ngIf="cashiers.length > 1"
+          [(ngModel)]="cashierFilters.user_id"
+          (change)="onFilter()"
+          class="filter-select"
+        >
+          <option value="">{{ 'Todos los cajeros' | t }}</option>
+          <option *ngFor="let c of cashiers" [value]="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+
+      <div class="summary-cards" *ngIf="cashierData['daily-summary']">
+        <div class="summary-card">
+          <h3>{{ 'Días' | t }}</h3>
+          <p class="summary-value">{{ cashierData['daily-summary'].summary?.days_count }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Facturas' | t }}</h3>
+          <p class="summary-value">{{ cashierData['daily-summary'].summary?.invoices }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Total Vendido' | t }}</h3>
+          <p class="summary-value">{{ cashierData['daily-summary'].summary?.total | money }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Venta Neta' | t }}</h3>
+          <p class="summary-value">{{ cashierData['daily-summary'].summary?.net | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['daily-summary'] && !cashierData['daily-summary']?.days?.length">
+        {{ 'No hay ventas en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['daily-summary']?.days?.length > 0">
+        <h3>{{ 'Resumen Diario de Ventas' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Facturas' | t }}</th>
+              <th>{{ 'Descuentos' | t }}</th>
+              <th>{{ 'Anuladas' | t }}</th>
+              <th>{{ 'Venta Neta' | t }}</th>
+              <th>{{ 'Efectivo' | t }}</th>
+              <th>{{ 'Tarjeta' | t }}</th>
+              <th>{{ 'Transferencia' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of cashierData['daily-summary'].days">
+              <td>{{ d.date | appDate }}</td>
+              <td>{{ d.invoices }}</td>
+              <td>{{ d.discount | money }}</td>
+              <td>{{ d.cancelled }}</td>
+              <td>{{ d.net | money }}</td>
+              <td>{{ d.cash | money }}</td>
+              <td>{{ d.card | money }}</td>
+              <td>{{ d.transfer | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'cashier-products'">
+      <div class="report-filters">
+        <select
+          *ngIf="cashiers.length > 1"
+          [(ngModel)]="cashierFilters.user_id"
+          (change)="onFilter()"
+          class="filter-select"
+        >
+          <option value="">{{ 'Todos los cajeros' | t }}</option>
+          <option *ngFor="let c of cashiers" [value]="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+
+      <div class="summary-cards" *ngIf="cashierData['cashier-products']">
+        <div class="summary-card">
+          <h3>{{ 'Productos' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-products'].summary?.products }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Unidades' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-products'].summary?.units }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Importe Total' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cashier-products'].summary?.total | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['cashier-products'] && !cashierData['cashier-products']?.items?.length">
+        {{ 'No hay productos vendidos en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['cashier-products']?.items?.length > 0">
+        <h3>{{ 'Productos Vendidos por Cajero' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'SKU' | t }}</th>
+              <th>{{ 'Cajero' | t }}</th>
+              <th>{{ 'Cantidad' | t }}</th>
+              <th>{{ 'Precio Unit.' | t }}</th>
+              <th>{{ 'Importe Total' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let i of cashierData['cashier-products'].items">
+              <td>{{ i.product }}</td>
+              <td>{{ i.sku }}</td>
+              <td>{{ i.cashier }}</td>
+              <td>{{ i.quantity }}</td>
+              <td>{{ i.unit_price | money }}</td>
+              <td>{{ i.total | money }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'voided'">
+      <div class="summary-cards" *ngIf="cashierData['voided']">
+        <div class="summary-card danger">
+          <h3>{{ 'Facturas Anuladas' | t }}</h3>
+          <p class="summary-value">{{ cashierData['voided'].summary?.voided_count }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Monto Anulado' | t }}</h3>
+          <p class="summary-value">{{ cashierData['voided'].summary?.voided_total | money }}</p>
+        </div>
+        <div class="summary-card warning">
+          <h3>{{ 'Devoluciones' | t }}</h3>
+          <p class="summary-value">{{ cashierData['voided'].summary?.returns_count }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Monto Devuelto' | t }}</h3>
+          <p class="summary-value">{{ cashierData['voided'].summary?.returns_total | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['voided'] && !cashierData['voided']?.voided_sales?.length && !cashierData['voided']?.returns?.length">
+        {{ 'No hay facturas anuladas ni devoluciones en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['voided']?.voided_sales?.length > 0">
+        <h3>{{ 'Facturas Anuladas' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Factura' | t }}</th>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Cajero' | t }}</th>
+              <th>{{ 'Items' | t }}</th>
+              <th>{{ 'Importe' | t }}</th>
+              <th>{{ 'Estado' | t }}</th>
+              <th>{{ 'Motivo' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of cashierData['voided'].voided_sales">
+              <td>{{ s.invoice_number }}</td>
+              <td>{{ s.created_at | appDate:'datetime' }}</td>
+              <td>{{ s.user?.name }}</td>
+              <td>{{ s.items_count }}</td>
+              <td>{{ s.total | money }}</td>
+              <td><span class="type-badge" [class]="s.status">{{ getSaleStatusLabel(s.status) | t }}</span></td>
+              <td>{{ s.notes }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="movements-table" *ngIf="cashierData['voided']?.returns?.length > 0">
+        <h3>{{ 'Devoluciones' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Número' | t }}</th>
+              <th>{{ 'Factura' | t }}</th>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Usuario' | t }}</th>
+              <th>{{ 'Producto' | t }}</th>
+              <th>{{ 'Monto' | t }}</th>
+              <th>{{ 'Estado' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of cashierData['voided'].returns">
+              <td>{{ r.return_number }}</td>
+              <td>{{ r.sale?.invoice_number }}</td>
+              <td>{{ r.created_at | appDate:'datetime' }}</td>
+              <td>{{ r.user?.name }}</td>
+              <td>{{ r.product?.name }}</td>
+              <td>{{ r.refund_amount | money }}</td>
+              <td><span class="status-badge" [class]="r.status">{{ getStatusLabel(r.status) | t }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'shifts'">
+      <div class="report-filters">
+        <select
+          *ngIf="cashiers.length > 1"
+          [(ngModel)]="cashierFilters.user_id"
+          (change)="onFilter()"
+          class="filter-select"
+        >
+          <option value="">{{ 'Todos los cajeros' | t }}</option>
+          <option *ngFor="let c of cashiers" [value]="c.id">{{ c.name }}</option>
+        </select>
+        <select [(ngModel)]="cashierFilters.status" (change)="onFilter()" class="filter-select">
+          <option value="">{{ 'Todos los estados' | t }}</option>
+          <option value="open">{{ 'Abierta' | t }}</option>
+          <option value="closed">{{ 'Cerrada' | t }}</option>
+        </select>
+      </div>
+
+      <div class="summary-cards" *ngIf="cashierData['shifts']">
+        <div class="summary-card">
+          <h3>{{ 'Turnos' | t }}</h3>
+          <p class="summary-value">{{ cashierData['shifts'].summary?.total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Abiertos' | t }}</h3>
+          <p class="summary-value">{{ cashierData['shifts'].summary?.open }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Cerrados' | t }}</h3>
+          <p class="summary-value">{{ cashierData['shifts'].summary?.closed }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Total Vendido' | t }}</h3>
+          <p class="summary-value">{{ cashierData['shifts'].summary?.total_sold | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['shifts'] && !cashierData['shifts']?.shifts?.length">
+        {{ 'No hay turnos registrados en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['shifts']?.shifts?.length > 0">
+        <h3>{{ 'Turnos de Cajero' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Caja' | t }}</th>
+              <th>{{ 'Cajero' | t }}</th>
+              <th>{{ 'Apertura' | t }}</th>
+              <th>{{ 'Cierre' | t }}</th>
+              <th>{{ 'Fondo Inicial' | t }}</th>
+              <th>{{ 'Total Vendido' | t }}</th>
+              <th>{{ 'Tiempo' | t }}</th>
+              <th>{{ 'Estado' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of cashierData['shifts'].shifts">
+              <td>{{ s.name }}</td>
+              <td>{{ s.user?.name }}</td>
+              <td>{{ s.opened_at | appDate:'datetime' }}</td>
+              <td>{{ s.closed_at ? (s.closed_at | appDate:'datetime') : '—' }}</td>
+              <td>{{ s.opening_balance | money }}</td>
+              <td>{{ s.total_sales | money }}</td>
+              <td>{{ formatWorked(s.worked_minutes) }}</td>
+              <td><span class="type-badge" [class]="s.status">{{ getRegisterStatusLabel(s.status) | t }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'closures'">
+      <div class="summary-cards" *ngIf="cashierData['closures']">
+        <div class="summary-card">
+          <h3>{{ 'Cierres' | t }}</h3>
+          <p class="summary-value">{{ cashierData['closures'].summary?.total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Ventas en Efectivo' | t }}</h3>
+          <p class="summary-value">{{ cashierData['closures'].summary?.cash_sales | money }}</p>
+        </div>
+        <div class="summary-card" [class.danger]="(cashierData['closures'].summary?.difference ?? 0) < 0">
+          <h3>{{ 'Diferencia Neta' | t }}</h3>
+          <p class="summary-value">{{ cashierData['closures'].summary?.difference | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['closures'] && !cashierData['closures']?.closures?.length">
+        {{ 'No hay cierres de caja en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['closures']?.closures?.length > 0">
+        <h3>{{ 'Cierres de Caja' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Caja' | t }}</th>
+              <th>{{ 'Cajero' | t }}</th>
+              <th>{{ 'Apertura' | t }}</th>
+              <th>{{ 'Cierre' | t }}</th>
+              <th>{{ 'Fondo' | t }}</th>
+              <th>{{ 'Ventas Efectivo' | t }}</th>
+              <th>{{ 'Entradas' | t }}</th>
+              <th>{{ 'Salidas' | t }}</th>
+              <th>{{ 'Esperado' | t }}</th>
+              <th>{{ 'Contado' | t }}</th>
+              <th>{{ 'Diferencia' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of cashierData['closures'].closures">
+              <td>{{ c.name }}</td>
+              <td>{{ c.user?.name }}</td>
+              <td>{{ c.opened_at | appDate:'datetime' }}</td>
+              <td>{{ c.closed_at | appDate:'datetime' }}</td>
+              <td>{{ c.opening_balance | money }}</td>
+              <td>{{ c.cash_sales | money }}</td>
+              <td>{{ c.cash_in | money }}</td>
+              <td>{{ c.cash_out | money }}</td>
+              <td>{{ c.expected_closing | money }}</td>
+              <td>{{ c.actual_closing | money }}</td>
+              <td [class]="c.difference < 0 ? 'diff-negative' : (c.difference > 0 ? 'diff-positive' : '')">
+                {{ c.difference | money }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'discrepancies'">
+      <div class="summary-cards" *ngIf="cashierData['discrepancies']">
+        <div class="summary-card">
+          <h3>{{ 'Registros' | t }}</h3>
+          <p class="summary-value">{{ cashierData['discrepancies'].summary?.total }}</p>
+        </div>
+        <div class="summary-card danger">
+          <h3>{{ 'Faltantes' | t }}</h3>
+          <p class="summary-value">{{ cashierData['discrepancies'].summary?.shortages }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Sobrantes' | t }}</h3>
+          <p class="summary-value">{{ cashierData['discrepancies'].summary?.overages }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Diferencia Neta' | t }}</h3>
+          <p class="summary-value">{{ cashierData['discrepancies'].summary?.net_difference | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['discrepancies'] && !cashierData['discrepancies']?.discrepancies?.length">
+        {{ 'No hay faltantes ni sobrantes registrados en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['discrepancies']?.discrepancies?.length > 0">
+        <h3>{{ 'Faltantes y Sobrantes de Caja' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Caja' | t }}</th>
+              <th>{{ 'Cajero' | t }}</th>
+              <th>{{ 'Fecha Cierre' | t }}</th>
+              <th>{{ 'Esperado' | t }}</th>
+              <th>{{ 'Contado' | t }}</th>
+              <th>{{ 'Diferencia' | t }}</th>
+              <th>{{ 'Tipo' | t }}</th>
+              <th>{{ 'Observaciones' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of cashierData['discrepancies'].discrepancies">
+              <td>{{ d.name }}</td>
+              <td>{{ d.user?.name }}</td>
+              <td>{{ d.closed_at | appDate:'datetime' }}</td>
+              <td>{{ d.expected_closing | money }}</td>
+              <td>{{ d.actual_closing | money }}</td>
+              <td [class]="d.difference < 0 ? 'diff-negative' : 'diff-positive'">
+                {{ d.difference | money }}
+              </td>
+              <td>{{ d.difference < 0 ? ('Faltante' | t) : ('Sobrante' | t) }}</td>
+              <td>{{ d.notes }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'cash-movements'">
+      <div class="report-filters">
+        <select
+          *ngIf="cashiers.length > 1"
+          [(ngModel)]="cashierFilters.user_id"
+          (change)="onFilter()"
+          class="filter-select"
+        >
+          <option value="">{{ 'Todos los usuarios' | t }}</option>
+          <option *ngFor="let c of cashiers" [value]="c.id">{{ c.name }}</option>
+        </select>
+        <select [(ngModel)]="cashierFilters.type" (change)="onFilter()" class="filter-select">
+          <option value="">{{ 'Todos los tipos' | t }}</option>
+          <option value="income">{{ 'Ingresos' | t }}</option>
+          <option value="withdrawal">{{ 'Retiros' | t }}</option>
+          <option value="expense">{{ 'Gastos' | t }}</option>
+        </select>
+      </div>
+
+      <div class="summary-cards" *ngIf="cashierData['cash-movements']">
+        <div class="summary-card">
+          <h3>{{ 'Movimientos' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cash-movements'].summary?.total }}</p>
+        </div>
+        <div class="summary-card">
+          <h3>{{ 'Entradas' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cash-movements'].summary?.income | money }}</p>
+        </div>
+        <div class="summary-card warning">
+          <h3>{{ 'Salidas' | t }}</h3>
+          <p class="summary-value">{{ cashierData['cash-movements'].summary?.out | money }}</p>
+        </div>
+      </div>
+
+      <p class="empty-msg" *ngIf="cashierData['cash-movements'] && !cashierData['cash-movements']?.movements?.length">
+        {{ 'No hay movimientos de efectivo en el período seleccionado.' | t }}
+      </p>
+
+      <div class="movements-table" *ngIf="cashierData['cash-movements']?.movements?.length > 0">
+        <h3>{{ 'Entradas y Salidas de Efectivo' | t }}</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Caja' | t }}</th>
+              <th>{{ 'Usuario' | t }}</th>
+              <th>{{ 'Tipo' | t }}</th>
+              <th>{{ 'Monto' | t }}</th>
+              <th>{{ 'Motivo' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of cashierData['cash-movements'].movements">
+              <td>{{ m.created_at | appDate:'datetime' }}</td>
+              <td>{{ m.cash_register?.name }}</td>
+              <td>{{ m.user?.name }}</td>
+              <td><span class="type-badge" [class]="m.type">{{ getCashMovementLabel(m.type) | t }}</span></td>
+              <td [class]="m.type === 'income' ? 'diff-positive' : 'diff-negative'">
+                {{ m.type === 'income' ? '+' : '-' }}{{ m.amount | money }}
+              </td>
+              <td>{{ m.reason }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    </div>
+
     <div class="loading" *ngIf="isLoading">
       <div class="spinner"></div>
-      <p>Cargando reportes...</p>
+      <p>{{ 'Cargando reportes...' | t }}</p>
     </div>
   </div>
 </app-layout>

@@ -8,6 +8,8 @@ import { ProductService } from '../services/product';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
 
 interface InventoryMovement {
   id: number;
@@ -35,7 +37,7 @@ interface Product {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-inventory',
   styleUrl: './inventory.css',
   templateUrl: './inventory.html',

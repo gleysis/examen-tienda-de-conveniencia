@@ -1,10 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupplierService } from '../services/supplier';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
 
 interface Supplier {
   id: number;
@@ -26,7 +28,7 @@ interface Supplier {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-suppliers',
   styleUrl: './suppliers.css',
   templateUrl: './suppliers.html',
@@ -60,7 +62,11 @@ export class Suppliers implements OnInit {
 
   searchQuery = '';
 
-  constructor(private supplierService: SupplierService, private authService: AuthService) {
+  constructor(
+    private supplierService: SupplierService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.user = this.authService.getCurrentUser();
   }
 
@@ -80,6 +86,7 @@ export class Suppliers implements OnInit {
         this.suppliers = response.data || [];
         this.meta = response.meta;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading suppliers:', error);
@@ -94,6 +101,7 @@ export class Suppliers implements OnInit {
         }
         this.isLoading = false;
         this.suppliers = [];
+        this.cdr.detectChanges();
       },
     });
   }
@@ -155,26 +163,28 @@ export class Suppliers implements OnInit {
   saveSupplier(): void {
     if (this.editingSupplier) {
       this.supplierService.updateSupplier(this.editingSupplier.id, this.supplierForm).subscribe({
-        next: (response) => {
-          alert('Proveedor actualizado exitosamente');
+        next: () => {
           this.showForm = false;
           this.loadSuppliers();
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Error updating supplier:', error);
           this.errorMessage = error.error?.message || 'Error al actualizar proveedor';
+          this.cdr.detectChanges();
         },
       });
     } else {
       this.supplierService.createSupplier(this.supplierForm).subscribe({
-        next: (response) => {
-          alert('Proveedor creado exitosamente');
+        next: () => {
           this.showForm = false;
           this.loadSuppliers();
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Error creating supplier:', error);
           this.errorMessage = error.error?.message || 'Error al crear proveedor';
+          this.cdr.detectChanges();
         },
       });
     }
@@ -184,12 +194,13 @@ export class Suppliers implements OnInit {
     if (confirm(`¿Está seguro de eliminar a ${supplier.name}?`)) {
       this.supplierService.deleteSupplier(supplier.id).subscribe({
         next: () => {
-          alert('Proveedor eliminado exitosamente');
           this.loadSuppliers();
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Error deleting supplier:', error);
           this.errorMessage = error.error?.message || 'Error al eliminar proveedor';
+          this.cdr.detectChanges();
         },
       });
     }

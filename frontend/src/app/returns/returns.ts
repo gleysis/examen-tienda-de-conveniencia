@@ -1,10 +1,23 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ReturnRefundService } from '../services/return-refund';
 import { SaleService } from '../services/sale';
 import type { Sale } from '../services/sale';
+import { AuthService } from '../services/auth';
+import { Layout } from '../layout/layout';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
+
+interface SaleItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  unit_price: number;
+  product?: { id: number; name: string };
+}
 
 interface ReturnRefund {
   id: number;
@@ -22,10 +35,13 @@ interface ReturnRefund {
   reference_number: string | null;
   processed_date: string | null;
   notes: string | null;
+  sale?: { id: number; invoice_number: string };
+  product?: { id: number; name: string };
+  user?: { id: number; name: string };
 }
 
 @Component({
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-returns',
   styleUrl: './returns.css',
   templateUrl: './returns.html',
@@ -33,13 +49,14 @@ interface ReturnRefund {
 export class Returns implements OnInit {
   returns: ReturnRefund[] = [];
   sales: Sale[] = [];
+  saleItems: SaleItem[] = [];
   meta: PaginationMeta = { current_page: 1, last_page: 1, per_page: 15, total: 0, from: null, to: null };
   isLoading = false;
   errorMessage = '';
   showForm = false;
   isProcessingFormVisible = false;
-  editingReturn: ReturnRefund | null = null;
   processingReturn: ReturnRefund | null = null;
+  user: any;
 
   returnForm = {
     sale_id: null as number | null,
@@ -62,8 +79,13 @@ export class Returns implements OnInit {
 
   constructor(
     private returnRefundService: ReturnRefundService,
-    private saleService: SaleService
-  ) {}
+    private saleService: SaleService,
+    private authService: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.user = this.authService.getCurrentUser();
+  }
 
   ngOnInit(): void {
     this.loadReturns();
@@ -72,6 +94,7 @@ export class Returns implements OnInit {
 
   loadReturns(page = 1): void {
     this.isLoading = true;
+    this.errorMessage = '';
     const params: any = { page };
     if (this.searchQuery) params.search = this.searchQuery;
     if (this.statusFilter) params.status = this.statusFilter;
@@ -81,11 +104,13 @@ export class Returns implements OnInit {
         this.returns = response.data || [];
         this.meta = response.meta;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading returns:', error);
         this.errorMessage = 'Error al cargar devoluciones';
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -94,6 +119,7 @@ export class Returns implements OnInit {
     this.saleService.getSales({ status: 'completed', per_page: 100 }).subscribe({
       next: (response) => {
         this.sales = response.data || [];
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading sales:', error);
@@ -112,7 +138,7 @@ export class Returns implements OnInit {
   }
 
   showAddForm(): void {
-    this.editingReturn = null;
+    this.saleItems = [];
     this.returnForm = {
       sale_id: null,
       sale_item_id: null,
@@ -124,26 +150,68 @@ export class Returns implements OnInit {
       refund_method: 'cash',
       notes: '',
     };
+    this.errorMessage = '';
     this.showForm = true;
   }
 
   onSaleChange(): void {
     const sale = this.sales.find((s) => s.id === this.returnForm.sale_id);
-    if (sale) {
-      // Sale selected; sale_item/product selection follows from the sale's items.
+    this.saleItems = (sale?.items ?? []) as SaleItem[];
+    this.returnForm.sale_item_id = null;
+    this.returnForm.product_id = null;
+    this.returnForm.quantity = 1;
+    this.returnForm.refund_amount = 0;
+  }
+
+  get selectedItem(): SaleItem | null {
+    return this.saleItems.find((i) => i.id === this.returnForm.sale_item_id) ?? null;
+  }
+
+  onItemChange(): void {
+    const item = this.selectedItem;
+    if (!item) {
+      this.returnForm.product_id = null;
+      this.returnForm.refund_amount = 0;
+      return;
+    }
+    this.returnForm.product_id = item.product_id;
+    this.returnForm.quantity = Math.min(this.returnForm.quantity, item.quantity);
+    this.updateRefundAmount();
+  }
+
+  onQuantityChange(): void {
+    const item = this.selectedItem;
+    if (item && this.returnForm.quantity > item.quantity) {
+      this.returnForm.quantity = item.quantity;
+    }
+    this.updateRefundAmount();
+  }
+
+  updateRefundAmount(): void {
+    const item = this.selectedItem;
+    if (item) {
+      const sale = this.sales.find((s) => s.id === this.returnForm.sale_id);
+      const saleRatio = sale && Number(sale.subtotal) > 0 ? Number(sale.total) / Number(sale.subtotal) : 1;
+      this.returnForm.refund_amount = Math.floor(this.returnForm.quantity * item.unit_price * saleRatio * 100) / 100;
     }
   }
 
   saveReturn(): void {
+    if (!this.returnForm.sale_id || !this.returnForm.sale_item_id || !this.returnForm.product_id) {
+      this.errorMessage = 'Selecciona una venta y un producto a devolver';
+      return;
+    }
+
     this.returnRefundService.createReturnRefund(this.returnForm).subscribe({
-      next: (response) => {
-        alert('Devolución creada exitosamente');
+      next: () => {
         this.showForm = false;
         this.loadReturns();
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error creating return:', error);
         this.errorMessage = error.error?.message || 'Error al crear devolución';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -159,15 +227,16 @@ export class Returns implements OnInit {
   processReturn(): void {
     if (this.processingReturn) {
       this.returnRefundService.processReturnRefund(this.processingReturn.id, this.processForm).subscribe({
-        next: (response) => {
-          alert('Devolución procesada exitosamente');
+        next: () => {
           this.isProcessingFormVisible = false;
           this.processingReturn = null;
           this.loadReturns();
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Error processing return:', error);
           this.errorMessage = error.error?.message || 'Error al procesar devolución';
+          this.cdr.detectChanges();
         },
       });
     }
@@ -176,12 +245,13 @@ export class Returns implements OnInit {
   updateStatus(returnRefund: ReturnRefund, newStatus: string): void {
     this.returnRefundService.updateReturnRefund(returnRefund.id, { status: newStatus }).subscribe({
       next: () => {
-        alert('Estado actualizado exitosamente');
         this.loadReturns();
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error updating status:', error);
         this.errorMessage = error.error?.message || 'Error al actualizar estado';
+        this.cdr.detectChanges();
       },
     });
   }
@@ -190,12 +260,13 @@ export class Returns implements OnInit {
     if (confirm(`¿Está seguro de eliminar la devolución ${returnRefund.return_number}?`)) {
       this.returnRefundService.deleteReturnRefund(returnRefund.id).subscribe({
         next: () => {
-          alert('Devolución eliminada exitosamente');
           this.loadReturns();
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Error deleting return:', error);
           this.errorMessage = error.error?.message || 'Error al eliminar devolución';
+          this.cdr.detectChanges();
         },
       });
     }
@@ -203,7 +274,6 @@ export class Returns implements OnInit {
 
   cancelForm(): void {
     this.showForm = false;
-    this.editingReturn = null;
   }
 
   cancelProcessForm(): void {
@@ -221,7 +291,31 @@ export class Returns implements OnInit {
     return labels[status] || status;
   }
 
+  getReasonLabel(reason: string): string {
+    const labels: any = {
+      defective: 'Defectuoso',
+      wrong_item: 'Producto incorrecto',
+      no_longer_needed: 'Ya no se necesita',
+      customer_preference: 'Preferencia del cliente',
+      other: 'Otro',
+    };
+    return labels[reason] || reason;
+  }
+
   getStatusClass(status: string): string {
     return `status-${status}`;
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: () => {
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        this.router.navigate(['/login']);
+      },
+    });
   }
 }

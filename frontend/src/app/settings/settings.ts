@@ -1,166 +1,378 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SystemSettingService } from '../services/system-setting';
+import { Router } from '@angular/router';
+import {
+  SystemSettingService,
+  SettingGroup,
+  SettingField,
+  SettingChange,
+} from '../services/system-setting';
+import { AuthService } from '../services/auth';
+import { NotificationService } from '../services/notification';
+import { PreferencesService } from '../services/preferences';
+import { I18nService } from '../services/i18n';
+import { PaginationMeta } from '../services/pagination';
+import { Layout } from '../layout/layout';
+import { APP_PIPES } from '../pipes';
+import { catchError, forkJoin, of } from 'rxjs';
 
-interface SystemSetting {
-  id: number;
-  key: string;
-  value: string | null;
-  type: string;
-  group: string;
-  description: string | null;
-  is_public: boolean;
-}
+const PERSONAL_GROUP = 'personal';
 
 @Component({
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Layout, ...APP_PIPES],
   selector: 'app-settings',
   styleUrl: './settings.css',
   templateUrl: './settings.html',
 })
 export class Settings implements OnInit {
-  settings: SystemSetting[] = [];
+  groups: SettingGroup[] = [];
+  activeGroup = '';
   isLoading = false;
+  isSaving = false;
+  isUploadingLogo = false;
   errorMessage = '';
-  showForm = false;
-  editingSetting: SystemSetting | null = null;
+  readonly canViewHistory: boolean;
+  /** Whether the user can open any system-wide section besides their own preferences. */
+  readonly hasSystemAccess: boolean;
 
-  settingForm = {
-    key: '',
-    value: '',
-    type: 'string',
-    group: 'general',
-    description: '',
-    is_public: false,
-  };
+  /** Values as last loaded/saved, used to detect unsaved changes per group. */
+  private savedSnapshot: Record<string, string> = {};
+  private personalGroup: SettingGroup | null = null;
+  private systemGroups: SettingGroup[] = [];
 
-  activeGroup = 'all';
-  groups: string[] = ['general', 'sales', 'inventory', 'pos', 'taxes', 'receipts'];
+  showHistory = false;
+  historyLoading = false;
+  history: SettingChange[] = [];
+  historyMeta: PaginationMeta | null = null;
 
-  constructor(private systemSettingService: SystemSettingService) {}
+  user: any;
 
-  ngOnInit(): void {
-    this.loadSettings();
+  constructor(
+    private systemSettingService: SystemSettingService,
+    private authService: AuthService,
+    private notificationService: NotificationService,
+    private preferencesService: PreferencesService,
+    private i18n: I18nService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {
+    this.user = this.authService.getCurrentUser();
+    this.canViewHistory = this.authService.hasPermission('settings.view');
+    this.hasSystemAccess = this.authService.hasAnyPermission([
+      'settings.view',
+      'settings.edit',
+      'settings.pos.edit',
+      'settings.inventory.edit',
+    ]);
   }
 
-  loadSettings(): void {
-    this.isLoading = true;
-    const params: any = {};
-    if (this.activeGroup !== 'all') params.group = this.activeGroup;
+  ngOnInit(): void {
+    this.loadSchema();
+  }
 
-    this.systemSettingService.getSettings(params).subscribe({
-      next: (response) => {
-        this.settings = response.settings;
+  get canEdit(): boolean {
+    return !!this.currentGroup?.can_edit;
+  }
+
+  loadSchema(): void {
+    this.isLoading = true;
+    const schema$ = this.hasSystemAccess
+      ? this.systemSettingService.getSchema().pipe(catchError(() => of({ groups: [] as SettingGroup[] })))
+      : of({ groups: [] as SettingGroup[] });
+
+    forkJoin([this.systemSettingService.getMyPreferences(), schema$]).subscribe({
+      next: ([mine, schema]) => {
+        this.personalGroup = mine.group;
+        this.setGroups(schema.groups);
+        if (!this.activeGroup && this.groups.length) {
+          this.activeGroup = this.groups[0].key;
+        }
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('Error loading settings:', error);
-        this.errorMessage = 'Error al cargar configuraciones';
+        console.error('Error loading settings schema:', error);
+        this.errorMessage = this.i18n.t('Error al cargar la configuración');
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
 
+  get currentGroup(): SettingGroup | undefined {
+    return this.groups.find((g) => g.key === this.activeGroup);
+  }
+
+  get isDirty(): boolean {
+    const group = this.currentGroup;
+    return !!group && this.serialize(group) !== this.savedSnapshot[group.key];
+  }
+
   setGroup(group: string): void {
+    if (group === this.activeGroup) {
+      return;
+    }
+    if (this.isDirty && !confirm(this.i18n.t('Tienes cambios sin guardar en esta sección. ¿Deseas descartarlos?'))) {
+      return;
+    }
+    this.discardChanges();
     this.activeGroup = group;
-    this.loadSettings();
+    this.errorMessage = '';
   }
 
-  showAddForm(): void {
-    this.editingSetting = null;
-    this.settingForm = {
-      key: '',
-      value: '',
-      type: 'string',
-      group: this.activeGroup === 'all' ? 'general' : this.activeGroup,
-      description: '',
-      is_public: false,
-    };
-    this.showForm = true;
+  saveGroup(): void {
+    const group = this.currentGroup;
+    if (!group || !this.canEdit) return;
+
+    const values: Record<string, any> = {};
+    for (const field of group.fields) {
+      if (field.type !== 'image') {
+        values[field.key] = this.normalizeValue(field);
+      }
+    }
+
+    this.isSaving = true;
+    this.errorMessage = '';
+    const successMessage = this.i18n.t('Cambios guardados en {section}', { section: this.i18n.t(group.label) });
+
+    if (group.key === PERSONAL_GROUP) {
+      this.savePersonal(values, successMessage);
+      return;
+    }
+
+    this.systemSettingService.bulkUpdate(values).subscribe({
+      next: (response) => {
+        this.setGroups(response.groups);
+        this.isSaving = false;
+        this.applySystemChange(group.key, values);
+        this.notificationService.success(successMessage);
+        this.cdr.detectChanges();
+      },
+      error: (error) => this.handleError(error, 'Error al guardar la configuración'),
+    });
   }
 
-  editSetting(setting: SystemSetting): void {
-    this.editingSetting = setting;
-    this.settingForm = {
-      key: setting.key,
-      value: setting.value || '',
-      type: setting.type,
-      group: setting.group,
-      description: setting.description || '',
-      is_public: setting.is_public,
-    };
-    this.showForm = true;
+  resetGroup(): void {
+    const group = this.currentGroup;
+    if (!group || !this.canEdit) return;
+
+    const message = this.i18n.t('¿Restablecer los valores predeterminados de "{section}"? Esta acción no se puede deshacer.', {
+      section: this.i18n.t(group.label),
+    });
+    if (!confirm(message)) {
+      return;
+    }
+
+    this.isSaving = true;
+    if (group.key === PERSONAL_GROUP) {
+      const defaults = Object.fromEntries(group.fields.map((field) => [field.key, null]));
+      this.savePersonal(defaults, this.i18n.t('Valores predeterminados restablecidos'));
+      return;
+    }
+
+    this.systemSettingService.resetGroup(group.key).subscribe({
+      next: (response) => {
+        this.setGroups(response.groups);
+        this.isSaving = false;
+        this.applySystemChange(group.key, this.valuesOf(group.key));
+        this.notificationService.success(this.i18n.t('Valores predeterminados restablecidos'));
+        this.cdr.detectChanges();
+      },
+      error: (error) => this.handleError(error, 'Error al restablecer la configuración'),
+    });
   }
 
-  saveSetting(): void {
-    if (this.editingSetting) {
-      this.systemSettingService.updateSetting(this.editingSetting.id, this.settingForm).subscribe({
-        next: (response) => {
-          alert('Configuración actualizada exitosamente');
-          this.showForm = false;
-          this.loadSettings();
-        },
-        error: (error) => {
-          console.error('Error updating setting:', error);
-          this.errorMessage = error.error?.message || 'Error al actualizar configuración';
-        },
-      });
+  discardChanges(): void {
+    const group = this.currentGroup;
+    if (!group || this.savedSnapshot[group.key] === undefined) return;
+
+    const saved = JSON.parse(this.savedSnapshot[group.key]) as Record<string, any>;
+    group.fields.forEach((field) => (field.value = saved[field.key]));
+  }
+
+  onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      this.notificationService.error(this.i18n.t('El logo no puede superar los 2 MB'));
+      return;
+    }
+
+    this.isUploadingLogo = true;
+    this.systemSettingService.uploadLogo(file).subscribe({
+      next: (response) => this.afterLogoChange(response.groups, response.message),
+      error: (error) => {
+        this.isUploadingLogo = false;
+        this.handleError(error, 'Error al subir el logo');
+      },
+    });
+  }
+
+  removeLogo(): void {
+    if (!confirm(this.i18n.t('¿Quitar el logo de la tienda?'))) return;
+
+    this.isUploadingLogo = true;
+    this.systemSettingService.deleteLogo().subscribe({
+      next: (response) => this.afterLogoChange(response.groups, response.message),
+      error: (error) => {
+        this.isUploadingLogo = false;
+        this.handleError(error, 'Error al quitar el logo');
+      },
+    });
+  }
+
+  optionEntries(field: SettingField): { value: string; label: string }[] {
+    return Object.entries(field.options ?? {}).map(([value, label]) => ({ value, label }));
+  }
+
+  inputStep(field: SettingField): string {
+    return field.type === 'float' ? '0.01' : '1';
+  }
+
+  // ---- History ----
+
+  openHistory(): void {
+    this.showHistory = true;
+    this.loadHistory(1);
+  }
+
+  closeHistory(): void {
+    this.showHistory = false;
+  }
+
+  loadHistory(page: number): void {
+    this.historyLoading = true;
+    this.systemSettingService.getHistory(page).subscribe({
+      next: (response) => {
+        this.history = response.data;
+        this.historyMeta = response.meta;
+        this.historyLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error loading settings history:', error);
+        this.historyLoading = false;
+        this.notificationService.error(this.i18n.t('Error al cargar el historial de cambios'));
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  formatHistoryValue(change: SettingChange, value: string | null): string {
+    if (value === null || value === '') {
+      return change.type === 'image' ? this.i18n.t('Sin logo') : '—';
+    }
+    switch (change.type) {
+      case 'boolean':
+        return this.i18n.t(value === '1' || value === 'true' ? 'Activado' : 'Desactivado');
+      case 'image':
+        return this.i18n.t('Logo cargado');
+      case 'select': {
+        const label = this.findField(change.key)?.options?.[value];
+        return label ? this.i18n.t(label) : value;
+      }
+      default:
+        return value;
+    }
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: () => this.router.navigate(['/login']),
+      error: () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        this.router.navigate(['/login']);
+      },
+    });
+  }
+
+  private afterLogoChange(groups: SettingGroup[], message: string): void {
+    // Keep unsaved edits of the other store fields while refreshing the logo.
+    const pending = this.currentGroup ? this.valuesOf(this.currentGroup.key) : {};
+    this.setGroups(groups);
+    this.currentGroup?.fields.forEach((field) => {
+      if (field.type !== 'image' && field.key in pending) {
+        field.value = pending[field.key];
+      }
+    });
+    this.isUploadingLogo = false;
+    this.notificationService.success(this.i18n.t(message));
+    this.cdr.detectChanges();
+  }
+
+  private savePersonal(preferences: Record<string, any>, successMessage: string): void {
+    this.systemSettingService.updateMyPreferences(preferences).subscribe({
+      next: (response) => {
+        this.personalGroup = response.group;
+        this.setGroups(this.systemGroups);
+        this.isSaving = false;
+        this.preferencesService.apply(response.preferences);
+        this.notificationService.success(successMessage);
+        this.cdr.detectChanges();
+      },
+      error: (error) => this.handleError(error, 'Error al guardar tus preferencias'),
+    });
+  }
+
+  /**
+   * System preferences are only defaults, so reload them together with the
+   * user's own choices instead of applying them directly.
+   */
+  private applySystemChange(groupKey: string, values: Record<string, any>): void {
+    if (groupKey === 'system') {
+      this.preferencesService.load();
     } else {
-      this.systemSettingService.createSetting(this.settingForm).subscribe({
-        next: (response) => {
-          alert('Configuración creada exitosamente');
-          this.showForm = false;
-          this.loadSettings();
-        },
-        error: (error) => {
-          console.error('Error creating setting:', error);
-          this.errorMessage = error.error?.message || 'Error al crear configuración';
-        },
-      });
+      this.preferencesService.apply(values);
     }
   }
 
-  deleteSetting(setting: SystemSetting): void {
-    if (confirm(`¿Está seguro de eliminar la configuración ${setting.key}?`)) {
-      this.systemSettingService.deleteSetting(setting.id).subscribe({
-        next: () => {
-          alert('Configuración eliminada exitosamente');
-          this.loadSettings();
-        },
-        error: (error) => {
-          console.error('Error deleting setting:', error);
-          this.errorMessage = error.error?.message || 'Error al eliminar configuración';
-        },
-      });
+  /** Replace the system groups, keeping the personal group as the first tab. */
+  private setGroups(systemGroups: SettingGroup[]): void {
+    this.systemGroups = systemGroups;
+    this.groups = this.personalGroup ? [this.personalGroup, ...systemGroups] : systemGroups;
+    this.savedSnapshot = Object.fromEntries(this.groups.map((group) => [group.key, this.serialize(group)]));
+  }
+
+  private serialize(group: SettingGroup): string {
+    // null and '' are equivalent for the user, so they must not count as a change.
+    return JSON.stringify(Object.fromEntries(group.fields.map((field) => [field.key, field.value ?? ''])));
+  }
+
+  private valuesOf(groupKey: string): Record<string, any> {
+    const group = this.groups.find((g) => g.key === groupKey);
+    return Object.fromEntries((group?.fields ?? []).map((field) => [field.key, field.value]));
+  }
+
+  private findField(key: string): SettingField | undefined {
+    return this.groups.flatMap((group) => group.fields).find((field) => field.key === key);
+  }
+
+  private normalizeValue(field: SettingField): any {
+    switch (field.type) {
+      case 'boolean':
+        return !!field.value;
+      case 'integer':
+        return Number.parseInt(field.value, 10) || 0;
+      case 'float':
+        return Number.parseFloat(field.value) || 0;
+      default:
+        return field.value ?? '';
     }
   }
 
-  cancelForm(): void {
-    this.showForm = false;
-    this.editingSetting = null;
-  }
-
-  getDisplayValue(setting: SystemSetting): string {
-    if (setting.value === null) return '-';
-    if (setting.type === 'boolean') {
-      return setting.value === '1' || setting.value === 'true' ? 'Sí' : 'No';
-    }
-    if (setting.type === 'number' || setting.type === 'integer' || setting.type === 'float') {
-      return setting.value;
-    }
-    return setting.value;
-  }
-
-  getTypeLabel(type: string): string {
-    const labels: any = {
-      string: 'Texto',
-      integer: 'Entero',
-      float: 'Decimal',
-      boolean: 'Booleano',
-      array: 'Arreglo',
-      json: 'JSON',
-    };
-    return labels[type] || type;
+  private handleError(error: any, fallback: string): void {
+    console.error(fallback, error);
+    this.isSaving = false;
+    const errors = error.error?.errors;
+    this.errorMessage = errors
+      ? (Object.values(errors).flat() as string[]).join(' ')
+      : error.error?.message || this.i18n.t(fallback);
+    this.notificationService.error(this.errorMessage);
+    this.cdr.detectChanges();
   }
 }

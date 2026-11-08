@@ -1,116 +1,115 @@
-<app-layout [userName]="user?.name" [userRole]="'seller'">
+<app-layout [userName]="user?.name">
   <div class="sales-history-container">
     <div class="history-header">
-      <h1>Historial de Ventas</h1>
       <div class="filter-section">
         <input
           type="text"
           [(ngModel)]="searchQuery"
-          placeholder="Buscar por número de factura..."
+          [attr.placeholder]="'Buscar por número de factura...' | t"
           class="search-input"
           (keyup.enter)="onSearch()"
         />
         <input
-          type="date"
+          appDateInput
           [(ngModel)]="dateFilter.date_from"
           class="date-input"
         />
         <input
-          type="date"
+          appDateInput
           [(ngModel)]="dateFilter.date_to"
           class="date-input"
         />
-        <button (click)="onFilter()" class="btn-filter">Filtrar</button>
+        <button (click)="onFilter()" class="btn-filter">{{ 'Filtrar' | t }}</button>
       </div>
     </div>
 
     <div class="error-message" *ngIf="errorMessage">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
     <div class="loading" *ngIf="isLoading">
       <div class="spinner"></div>
-      <p>Cargando historial de ventas...</p>
+      <p>{{ 'Cargando historial de ventas...' | t }}</p>
     </div>
 
     <div class="sales-table" *ngIf="!isLoading">
       <table>
         <thead>
           <tr>
-            <th>Factura</th>
-            <th>Fecha</th>
-            <th>Total</th>
-            <th>Método</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th>{{ 'Factura' | t }}</th>
+            <th>{{ 'Fecha' | t }}</th>
+            <th>{{ 'Total' | t }}</th>
+            <th>{{ 'Método' | t }}</th>
+            <th>{{ 'Estado' | t }}</th>
+            <th>{{ 'Acciones' | t }}</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let sale of sales">
             <td>{{ sale.invoice_number }}</td>
-            <td>{{ sale.created_at | date:'short' }}</td>
-            <td>${{ sale.total.toFixed(2) }}</td>
-            <td>{{ getPaymentMethodLabel(sale.payment_method) }}</td>
+            <td>{{ sale.created_at | appDate:'datetime' }}</td>
+            <td>{{ sale.total | money }}</td>
+            <td>{{ getPaymentMethodLabel(sale.payment_method) | t }}</td>
             <td>
               <span class="status-badge" [class]="getStatusClass(sale.status)">
-                {{ getStatusLabel(sale.status) }}
+                {{ getStatusLabel(sale.status) | t }}
               </span>
             </td>
             <td>
-              <button (click)="viewDetails(sale)" class="btn-action btn-view">Ver</button>
-              <button (click)="printReceipt(sale)" class="btn-action btn-print">Imprimir</button>
+              <button (click)="viewDetails(sale)" class="btn-action btn-view">{{ 'Ver' | t }}</button>
+              <button (click)="printReceipt(sale)" class="btn-action btn-print">{{ 'Imprimir' | t }}</button>
             </td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination" *ngIf="meta.last_page > 1">
-        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
-        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} ventas)</span>
-        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">{{ 'Anterior' | t }}</button>
+        <span>{{ 'Página' | t }} {{ meta.current_page }} {{ 'de' | t }} {{ meta.last_page }} ({{ meta.total }} {{ 'ventas)' | t }}</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">{{ 'Siguiente' | t }}</button>
       </div>
 
       <div class="no-sales" *ngIf="sales.length === 0">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 17v-2m3 2v4m3 4h6m-6 0v6m6 0V9m6 6H9"></path>
         </svg>
-        <p>No hay ventas registradas</p>
+        <p>{{ 'No hay ventas registradas' | t }}</p>
       </div>
     </div>
 
     <div class="modal-overlay" *ngIf="showDetails" (click)="closeDetails()">
       <div class="modal-content" (click)="$event.stopPropagation()" *ngIf="selectedSale">
         <div class="modal-header">
-          <h2>Detalle de Venta</h2>
+          <h2>{{ 'Detalle de Venta' | t }}</h2>
           <button (click)="closeDetails()" class="btn-close">✕</button>
         </div>
         <div class="modal-body">
           <div class="sale-detail">
-            <p><strong>Factura:</strong> {{ selectedSale.invoice_number }}</p>
-            <p><strong>Fecha:</strong> {{ selectedSale.created_at | date:'full' }}</p>
-            <p><strong>Total:</strong> ${{ selectedSale.total.toFixed(2) }}</p>
-            <p><strong>Método de pago:</strong> {{ getPaymentMethodLabel(selectedSale.payment_method) }}</p>
-            <p><strong>Estado:</strong> {{ getStatusLabel(selectedSale.status) }}</p>
-            <p><strong>Vendedor:</strong> {{ selectedSale.user?.name || 'N/A' }}</p>
+            <p><strong>{{ 'Factura:' | t }}</strong> {{ selectedSale.invoice_number }}</p>
+            <p><strong>{{ 'Fecha:' | t }}</strong> {{ selectedSale.created_at | appDate:'long' }}</p>
+            <p><strong>{{ 'Total:' | t }}</strong> {{ selectedSale.total | money }}</p>
+            <p><strong>{{ 'Método de pago:' | t }}</strong> {{ getPaymentMethodLabel(selectedSale.payment_method) | t }}</p>
+            <p><strong>{{ 'Estado:' | t }}</strong> {{ getStatusLabel(selectedSale.status) | t }}</p>
+            <p><strong>{{ 'Vendedor:' | t }}</strong> {{ selectedSale.user?.name || ('N/A' | t) }}</p>
           </div>
 
           <div class="sale-items" *ngIf="selectedSale.items">
-            <h3>Productos Vendidos</h3>
+            <h3>{{ 'Productos Vendidos' | t }}</h3>
             <table class="items-table">
               <thead>
                 <tr>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>Precio Unitario</th>
-                  <th>Subtotal</th>
+                  <th>{{ 'Producto' | t }}</th>
+                  <th>{{ 'Cantidad' | t }}</th>
+                  <th>{{ 'Precio Unitario' | t }}</th>
+                  <th>{{ 'Subtotal' | t }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let item of selectedSale.items">
-                  <td>{{ item.product?.name || 'N/A' }}</td>
+                  <td>{{ item.product?.name || ('N/A' | t) }}</td>
                   <td>{{ item.quantity }}</td>
-                  <td>${{ item.unit_price?.toFixed(2) }}</td>
-                  <td>${{ item.subtotal?.toFixed(2) }}</td>
+                  <td>{{ item.unit_price | money }}</td>
+                  <td>{{ item.subtotal | money }}</td>
                 </tr>
               </tbody>
             </table>
@@ -121,9 +120,9 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 17h2a2 2 0 002 2v2a2 2 0 002 2h2m-2-4v-4m0 0h-6m6 0v6m0-6a2 2 0 002 2v6a2 2 0 002 2m6 0V9a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
             </svg>
-            Imprimir Comprobante
+            {{ 'Imprimir Comprobante' | t }}
           </button>
-          <button (click)="closeDetails()" class="btn-close">Cerrar</button>
+          <button (click)="closeDetails()" class="btn-close">{{ 'Cerrar' | t }}</button>
         </div>
       </div>
     </div>

@@ -1,12 +1,14 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { BackupService, BackupFile } from '../services/backup';
+import { Observable } from 'rxjs';
+import { BackupService, BackupFile, RestoreResponse } from '../services/backup';
 import { NotificationService } from '../services/notification';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
+import { APP_PIPES } from '../pipes';
 
 @Component({
-  imports: [CommonModule, Layout],
+  imports: [CommonModule, Layout, ...APP_PIPES],
   selector: 'app-backups',
   styleUrl: './backups.css',
   templateUrl: './backups.html',
@@ -104,14 +106,33 @@ export class Backups implements OnInit {
     this.selectedFile = input.files?.[0] || null;
   }
 
-  restore(): void {
-    if (!this.selectedFile) {
+  restore(fileInput: HTMLInputElement): void {
+    const file = this.selectedFile;
+    if (!file) {
       return;
     }
 
+    this.runRestore('este archivo', this.backupService.restoreBackup(file), () => {
+      this.selectedFile = null;
+      fileInput.value = '';
+    });
+  }
+
+  restoreStored(backup: BackupFile): void {
+    this.runRestore(
+      `"${backup.filename}"`,
+      this.backupService.restoreStoredBackup(backup.filename)
+    );
+  }
+
+  private runRestore(
+    sourceLabel: string,
+    request: Observable<RestoreResponse>,
+    onSuccess?: () => void
+  ): void {
     if (
       !confirm(
-        '¿Restaurar la base de datos desde este archivo? Los datos actuales serán reemplazados.'
+        `¿Restaurar la base de datos desde ${sourceLabel}? Los datos actuales serán reemplazados. Se guardará automáticamente una copia de seguridad del estado actual.`
       )
     ) {
       return;
@@ -119,12 +140,12 @@ export class Backups implements OnInit {
 
     this.isRestoring = true;
     this.errorMessage = '';
-    this.backupService.restoreBackup(this.selectedFile).subscribe({
+    request.subscribe({
       next: (response) => {
         this.isRestoring = false;
-        this.selectedFile = null;
+        onSuccess?.();
         this.notificationService.success(response.message || 'Base de datos restaurada');
-        this.cdr.detectChanges();
+        this.loadBackups();
       },
       error: (error) => {
         this.isRestoring = false;

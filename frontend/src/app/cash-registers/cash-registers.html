@@ -1,49 +1,50 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'">
+<app-layout [userName]="user?.name" pageTitle="Cajas Registradoras">
   <div class="registers-container">
     <div class="registers-header">
-      <h2>Cajas Registradoras</h2>
-      <button (click)="showAddForm()" class="btn-create" *ngIf="!currentRegister">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14 M5 12h14"></path>
-        </svg>
-        Abrir Caja
-      </button>
+      <ng-container *appHasPermission="'cash-registers.open'">
+        <button (click)="showAddForm()" class="btn-create" *ngIf="!currentRegister">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14 M5 12h14"></path>
+          </svg>
+          {{ 'Abrir Caja' | t }}
+        </button>
+      </ng-container>
     </div>
 
     <div *ngIf="errorMessage" class="error-message">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
     <!-- Caja abierta actual -->
     <div class="current-register" *ngIf="currentRegister">
       <div class="current-header">
-        <h3>{{ currentRegister.name }} — Abierta</h3>
-        <button class="btn-close-register" (click)="startClose()">Cerrar Caja</button>
+        <h3>{{ currentRegister.name }} {{ '— Abierta' | t }}</h3>
+        <button class="btn-close-register" (click)="startClose()" *appHasPermission="'cash-registers.close'">{{ 'Cerrar Caja' | t }}</button>
       </div>
       <p class="current-meta" *ngIf="currentRegister.opened_at">
-        Abierta: {{ currentRegister.opened_at | date:'dd/MM/yyyy HH:mm' }}
+        {{ 'Abierta:' | t }} {{ currentRegister.opened_at | appDate:'datetime' }}
         <span *ngIf="currentRegister.location"> · {{ currentRegister.location }}</span>
       </p>
       <div class="balance-grid">
         <div class="balance-card">
-          <span class="balance-label">Apertura</span>
-          <span class="balance-value">${{ toNumber(currentRegister.opening_balance).toFixed(2) }}</span>
+          <span class="balance-label">{{ 'Apertura' | t }}</span>
+          <span class="balance-value">{{ toNumber(currentRegister.opening_balance) | money }}</span>
         </div>
         <div class="balance-card">
-          <span class="balance-label">Ventas efectivo</span>
-          <span class="balance-value">${{ toNumber(currentRegister.cash_sales).toFixed(2) }}</span>
+          <span class="balance-label">{{ 'Ventas efectivo' | t }}</span>
+          <span class="balance-value">{{ toNumber(currentRegister.cash_sales) | money }}</span>
         </div>
         <div class="balance-card">
-          <span class="balance-label">Ventas tarjeta</span>
-          <span class="balance-value">${{ toNumber(currentRegister.card_sales).toFixed(2) }}</span>
+          <span class="balance-label">{{ 'Ventas tarjeta' | t }}</span>
+          <span class="balance-value">{{ toNumber(currentRegister.card_sales) | money }}</span>
         </div>
         <div class="balance-card">
-          <span class="balance-label">Ventas transferencia</span>
-          <span class="balance-value">${{ toNumber(currentRegister.transfer_sales).toFixed(2) }}</span>
+          <span class="balance-label">{{ 'Ventas transferencia' | t }}</span>
+          <span class="balance-value">{{ toNumber(currentRegister.transfer_sales) | money }}</span>
         </div>
         <div class="balance-card expected">
-          <span class="balance-label">Esperado en caja</span>
-          <span class="balance-value">${{ toNumber(currentRegister.expected_closing).toFixed(2) }}</span>
+          <span class="balance-label">{{ 'Esperado en caja' | t }}</span>
+          <span class="balance-value">{{ toNumber(currentRegister.expected_closing) | money }}</span>
         </div>
       </div>
     </div>
@@ -51,7 +52,7 @@
     <!-- Historial -->
     <div *ngIf="isLoading" class="loading">
       <div class="spinner"></div>
-      <p>Cargando cajas...</p>
+      <p>{{ 'Cargando cajas...' | t }}</p>
     </div>
 
     <div *ngIf="!isLoading" class="registers-table-container">
@@ -60,52 +61,54 @@
           <rect x="2" y="5" width="20" height="14" rx="2"></rect>
           <line x1="2" y1="10" x2="22" y2="10"></line>
         </svg>
-        <p>No hay cajas registradoras</p>
+        <p>{{ 'No hay cajas registradoras' | t }}</p>
       </div>
       <table class="registers-table" *ngIf="registers.length > 0">
         <thead>
           <tr>
-            <th>Nombre</th>
-            <th>Cajero</th>
-            <th>Apertura</th>
-            <th>Esperado</th>
-            <th>Contado</th>
-            <th>Diferencia</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th>{{ 'Nombre' | t }}</th>
+            <th>{{ 'Cajero' | t }}</th>
+            <th>{{ 'Apertura' | t }}</th>
+            <th>{{ 'Esperado' | t }}</th>
+            <th>{{ 'Contado' | t }}</th>
+            <th>{{ 'Diferencia' | t }}</th>
+            <th>{{ 'Estado' | t }}</th>
+            <th>{{ 'Acciones' | t }}</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let register of registers">
             <td>{{ register.name }}</td>
             <td>{{ register.user?.name || '—' }}</td>
-            <td>${{ toNumber(register.opening_balance).toFixed(2) }}</td>
-            <td>${{ toNumber(register.expected_closing).toFixed(2) }}</td>
-            <td>{{ register.actual_closing !== null ? '$' + toNumber(register.actual_closing).toFixed(2) : '—' }}</td>
+            <td>{{ toNumber(register.opening_balance) | money }}</td>
+            <td>{{ toNumber(register.expected_closing) | money }}</td>
+            <td>{{ register.actual_closing !== null ? (register.actual_closing | money) : '—' }}</td>
             <td [class.negative]="register.difference !== null && toNumber(register.difference) < 0"
                 [class.positive]="register.difference !== null && toNumber(register.difference) > 0">
-              {{ register.difference !== null ? '$' + toNumber(register.difference).toFixed(2) : '—' }}
+              {{ register.difference !== null ? (register.difference | money) : '—' }}
             </td>
             <td>
               <span class="status-badge" [class.open]="register.status === 'open'">
-                {{ register.status === 'open' ? 'Abierta' : 'Cerrada' }}
+                {{ register.status === 'open' ? ('Abierta' | t) : ('Cerrada' | t) }}
               </span>
             </td>
             <td>
-              <button *ngIf="register.status === 'closed'"
-                      class="btn-reopen"
-                      (click)="reopenRegister(register)">
-                Reabrir
-              </button>
+              <ng-container *appHasPermission="'cash-registers.open'">
+                <button *ngIf="register.status === 'closed'"
+                        class="btn-reopen"
+                        (click)="reopenRegister(register)">
+                  {{ 'Reabrir' | t }}
+                </button>
+              </ng-container>
             </td>
           </tr>
         </tbody>
       </table>
 
       <div class="pagination" *ngIf="meta.last_page > 1">
-        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
-        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} cajas)</span>
-        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">{{ 'Anterior' | t }}</button>
+        <span>{{ 'Página' | t }} {{ meta.current_page }} {{ 'de' | t }} {{ meta.last_page }} ({{ meta.total }} {{ 'cajas)' | t }}</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">{{ 'Siguiente' | t }}</button>
       </div>
     </div>
 
@@ -113,26 +116,26 @@
     <div *ngIf="showOpenForm" class="modal-overlay" (click)="cancelOpenForm()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>Abrir Caja Registradora</h2>
+          <h2>{{ 'Abrir Caja Registradora' | t }}</h2>
           <button (click)="cancelOpenForm()" class="btn-close">✕</button>
         </div>
         <form (ngSubmit)="openRegister()">
           <div class="form-group">
-            <label>Nombre *</label>
+            <label>{{ 'Nombre *' | t }}</label>
             <input type="text" [(ngModel)]="openForm.name" name="name" required />
           </div>
           <div class="form-group">
-            <label>Ubicación</label>
+            <label>{{ 'Ubicación' | t }}</label>
             <input type="text" [(ngModel)]="openForm.location" name="location" />
           </div>
           <div class="form-group">
-            <label>Balance de apertura ($) *</label>
+            <label>{{ 'Balance de apertura ($) *' | t }}</label>
             <input type="number" [(ngModel)]="openForm.opening_balance" name="opening_balance"
                    step="0.01" min="0" required />
           </div>
           <div class="form-actions">
-            <button type="button" class="btn-cancel" (click)="cancelOpenForm()">Cancelar</button>
-            <button type="submit" class="btn-save">Abrir Caja</button>
+            <button type="button" class="btn-cancel" (click)="cancelOpenForm()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save">{{ 'Abrir Caja' | t }}</button>
           </div>
         </form>
       </div>
@@ -142,37 +145,37 @@
     <div *ngIf="showCloseForm && currentRegister" class="modal-overlay" (click)="cancelClose()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>Cierre de Caja — {{ currentRegister.name }}</h2>
+          <h2>{{ 'Cierre de Caja —' | t }} {{ currentRegister.name }}</h2>
           <button (click)="cancelClose()" class="btn-close">✕</button>
         </div>
         <div class="closing-summary">
           <div class="closing-row">
-            <span>Balance de apertura:</span>
-            <span>${{ toNumber(currentRegister.opening_balance).toFixed(2) }}</span>
+            <span>{{ 'Balance de apertura:' | t }}</span>
+            <span>{{ toNumber(currentRegister.opening_balance) | money }}</span>
           </div>
           <div class="closing-row">
-            <span>Ventas en efectivo:</span>
-            <span>${{ toNumber(currentRegister.cash_sales).toFixed(2) }}</span>
+            <span>{{ 'Ventas en efectivo:' | t }}</span>
+            <span>{{ toNumber(currentRegister.cash_sales) | money }}</span>
           </div>
           <div class="closing-row expected">
-            <span>Efectivo esperado:</span>
-            <span>${{ toNumber(currentRegister.expected_closing).toFixed(2) }}</span>
+            <span>{{ 'Efectivo esperado:' | t }}</span>
+            <span>{{ toNumber(currentRegister.expected_closing) | money }}</span>
           </div>
         </div>
         <form (ngSubmit)="closeRegister()">
           <div class="form-group">
-            <label>Efectivo contado en caja ($) *</label>
+            <label>{{ 'Efectivo contado en caja ($) *' | t }}</label>
             <input type="number" [(ngModel)]="actualClosing" name="actual_closing"
                    step="0.01" min="0" required />
           </div>
           <div class="closing-row difference" *ngIf="closingDifference !== null"
                [class.negative]="closingDifference! < 0" [class.positive]="closingDifference! > 0">
-            <span>Diferencia:</span>
-            <span>${{ closingDifference!.toFixed(2) }}</span>
+            <span>{{ 'Diferencia:' | t }}</span>
+            <span>{{ closingDifference! | money }}</span>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn-cancel" (click)="cancelClose()">Cancelar</button>
-            <button type="submit" class="btn-save" [disabled]="actualClosing === null">Cerrar Caja</button>
+            <button type="button" class="btn-cancel" (click)="cancelClose()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save" [disabled]="actualClosing === null">{{ 'Cerrar Caja' | t }}</button>
           </div>
         </form>
       </div>

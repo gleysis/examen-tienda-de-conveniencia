@@ -1,4 +1,4 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'">
+<app-layout [userName]="user?.name">
   <div class="users-container">
     <div class="users-header">
       <div class="search-bar">
@@ -6,25 +6,25 @@
           type="text"
           [(ngModel)]="searchTerm"
           (ngModelChange)="filterUsers()"
-          placeholder="Buscar usuarios..."
+          [attr.placeholder]="'Buscar usuarios...' | t"
           class="search-input"
         />
       </div>
-      <button (click)="openCreateForm()" class="btn-create">
+      <button (click)="openCreateForm()" class="btn-create" *appHasPermission="'users.create'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14 M5 12h14"></path>
         </svg>
-        Nuevo Usuario
+        {{ 'Nuevo Usuario' | t }}
       </button>
     </div>
 
     <div class="error-message" *ngIf="errorMessage">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
     <div class="loading" *ngIf="isLoading">
       <div class="spinner"></div>
-      <p>Cargando usuarios...</p>
+      <p>{{ 'Cargando usuarios...' | t }}</p>
     </div>
 
     <div class="users-table-container" *ngIf="!isLoading">
@@ -32,15 +32,15 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
         </svg>
-        <p>No hay usuarios registrados</p>
+        <p>{{ 'No hay usuarios registrados' | t }}</p>
       </div>
       <table class="users-table" *ngIf="filteredUsers.length > 0">
         <thead>
           <tr>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Roles</th>
-            <th>Acciones</th>
+            <th>{{ 'Nombre' | t }}</th>
+            <th>{{ 'Email' | t }}</th>
+            <th>{{ 'Roles' | t }}</th>
+            <th>{{ 'Acciones' | t }}</th>
           </tr>
         </thead>
         <tbody>
@@ -55,17 +55,17 @@
                   </span>
                 </div>
                 <div *ngIf="user.roles.length === 0" class="no-roles">
-                  Sin roles
+                  {{ 'Sin roles' | t }}
                 </div>
               </div>
             </td>
             <td>
-              <button (click)="openEditForm(user)" class="btn-action btn-edit" title="Editar">
+              <button (click)="openEditForm(user)" class="btn-action btn-edit" [attr.title]="'Editar' | t" *appHasPermission="'users.edit'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
               </button>
-              <button (click)="deleteUser(user)" class="btn-action btn-delete" title="Eliminar">
+              <button (click)="deleteUser(user)" class="btn-action btn-delete" [attr.title]="'Eliminar' | t" *appHasPermission="'users.delete'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6"></path>
                 </svg>
@@ -76,26 +76,26 @@
       </table>
 
       <div class="pagination" *ngIf="meta.last_page > 1">
-        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
-        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} usuarios)</span>
-        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">{{ 'Anterior' | t }}</button>
+        <span>{{ 'Página' | t }} {{ meta.current_page }} {{ 'de' | t }} {{ meta.last_page }} ({{ meta.total }} {{ 'usuarios)' | t }}</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">{{ 'Siguiente' | t }}</button>
       </div>
     </div>
 
   <div class="modal-overlay" *ngIf="showForm" (click)="closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>{{ isEditing ? 'Editar Usuario' : 'Nuevo Usuario' }}</h2>
-        <button (click)="closeForm()" class="btn-close">&times;</button>
+        <h2>{{ isEditing ? ('Editar Usuario' | t) : ('Nuevo Usuario' | t) }}</h2>
+        <button (click)="closeForm()" class="btn-close">{{ '&times;' | t }}</button>
       </div>
 
       <form (ngSubmit)="onSubmit()">
         <div class="form-error" *ngIf="errorMessage">
-          {{ errorMessage }}
+          {{ errorMessage | t }}
         </div>
 
         <div class="form-group">
-          <label for="name">Nombre</label>
+          <label for="name">{{ 'Nombre' | t }}</label>
           <input
             id="name"
             type="text"
@@ -111,7 +111,7 @@
         </div>
 
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">{{ 'Email' | t }}</label>
           <input
             id="email"
             type="email"
@@ -128,7 +128,7 @@
 
         <div class="form-group">
           <label for="password">
-            {{ isEditing ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña' }}
+            {{ isEditing ? ('Contraseña (dejar vacío para mantener)' | t) : ('Contraseña' | t) }}
           </label>
           <input
             id="password"
@@ -136,7 +136,7 @@
             [(ngModel)]="formData.password"
             name="password"
             [required]="!isEditing"
-            minlength="6"
+            minlength="8"
             class="form-control"
             [ngClass]="{'error': formErrors.password}"
           />
@@ -146,15 +146,17 @@
         </div>
 
         <div class="form-group">
-          <label>Roles</label>
+          <label>{{ 'Roles' | t }}</label>
           <div class="roles-checkboxes">
-            <p *ngIf="roles.length === 0">Cargando roles... ({{ roles.length }})</p>
+            <p *ngIf="roles.length === 0">{{ 'Cargando roles... (' | t }}{{ roles.length }})</p>
             <label *ngFor="let role of roles" class="role-checkbox">
               <input
-                type="checkbox"
+                type="radio"
+                name="role"
                 [value]="role.id"
                 [checked]="isRoleSelected(role.id)"
-                (change)="toggleRole(role.id)"
+                (change)="selectRole(role.id)"
+                required
               />
               <span>{{ role.name }}</span>
               <small *ngIf="role.description" class="role-description">{{ role.description }}</small>
@@ -166,9 +168,9 @@
         </div>
 
         <div class="form-actions">
-          <button type="button" (click)="closeForm()" class="btn-cancel">Cancelar</button>
+          <button type="button" (click)="closeForm()" class="btn-cancel">{{ 'Cancelar' | t }}</button>
           <button type="submit" class="btn-submit" [disabled]="isLoading">
-            {{ isLoading ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear') }}
+            {{ isLoading ? ('Guardando...' | t) : (isEditing ? ('Actualizar' | t) : ('Crear' | t)) }}
           </button>
         </div>
       </form>

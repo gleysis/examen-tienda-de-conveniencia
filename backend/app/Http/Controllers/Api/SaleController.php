@@ -11,15 +11,21 @@ use App\Models\Discount;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Support\SystemSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SaleController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Sale::with(['user', 'cashRegister', 'items.product']);
+
+        if ($request->user()->isLimitedToOwnRecords()) {
+            $query->where('user_id', $request->user()->id);
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -47,23 +53,28 @@ class SaleController extends Controller
             foreach ($request->items as $item) {
                 $product = Product::findOrFail($item['product_id']);
 
-                if ($product->stock < $item['quantity']) {
+                if (! SystemSettings::value('allow_negative_stock', false) && $product->stock < $item['quantity']) {
                     abort(422, "Stock insuficiente para {$product->name}. Disponible: {$product->stock}, Solicitado: {$item['quantity']}");
                 }
 
-                $itemSubtotal = $item['quantity'] * $item['unit_price'];
+                $unitPrice = (float) $product->price;
+                $itemSubtotal = round($item['quantity'] * $unitPrice, 2);
                 $subtotal += $itemSubtotal;
 
                 $saleItems[] = [
-                    'product_id' => $item['product_id'],
+                    'product_id' => $product->id,
                     'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'discount' => $item['discount'] ?? 0,
+                    'unit_price' => $unitPrice,
+                    'discount' => 0,
                     'subtotal' => $itemSubtotal,
                 ];
             }
 
-            $discount = $request->discount ?? 0;
+            $discount = 0;
+
+            if (! SystemSettings::value('allow_discounts', true) && $request->discount_code) {
+                abort(422, 'Los descuentos en ventas están deshabilitados.');
+            }
 
             if ($request->discount_code) {
                 $discountObj = Discount::where('code', $request->discount_code)->first();
@@ -83,15 +94,30 @@ class SaleController extends Controller
                 }
             }
 
-            $tax = $request->tax ?? 0;
-            $total = $subtotal - $discount + $tax;
+            $maxDiscountPercent = (float) SystemSettings::value('max_discount_percent', 100);
+            if ($discount > 0 && $discount > round($subtotal * $maxDiscountPercent / 100, 2)) {
+                abort(422, "El descuento supera el máximo permitido ({$maxDiscountPercent}% del subtotal).");
+            }
 
-            $lastSale = Sale::orderBy('id', 'desc')->first();
-            $lastNumber = $lastSale ? (int) substr($lastSale->invoice_number, 4) : 0;
-            $invoiceNumber = 'INV-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+            $discount = round($discount, 2);
+            $tax = round($subtotal * (float) SystemSettings::value('tax_rate', 0) / 100, 2);
+            $total = round($subtotal - $discount + $tax, 2);
 
-            $cashRegisterId = $request->cash_register_id
-                ?? CashRegister::where('user_id', auth()->id())->open()->value('id');
+            if ($request->payment_method === 'cash' && $request->filled('amount_received')
+                && round((float) $request->amount_received, 2) < round($total, 2)) {
+                abort(422, sprintf(
+                    'Pago insuficiente. El dinero recibido (%s) es menor que el total a pagar (%s).',
+                    number_format((float) $request->amount_received, 2),
+                    number_format($total, 2),
+                ));
+            }
+
+            $prefix = SystemSettings::value('invoice_prefix', 'INV');
+            $lastSale = Sale::orderBy('id', 'desc')->lockForUpdate()->first();
+            $lastNumber = $lastSale ? (int) Str::afterLast($lastSale->invoice_number, '-') : 0;
+            $invoiceNumber = $prefix.'-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+
+            $cashRegisterId = CashRegister::where('user_id', auth()->id())->open()->value('id');
 
             $sale = Sale::create([
                 'invoice_number' => $invoiceNumber,
@@ -109,6 +135,9 @@ class SaleController extends Controller
             if ($cashRegisterId) {
                 CashRegister::find($cashRegisterId)?->addSale($total, $request->payment_method);
             }
+
+            $notifyOutOfStock = (bool) SystemSettings::value('notify_out_of_stock', true);
+            $outOfStockProducts = [];
 
             foreach ($saleItems as $item) {
                 $sale->items()->create($item);
@@ -129,17 +158,24 @@ class SaleController extends Controller
                     'new_stock' => $newStock,
                     'reference' => "Venta #{$sale->invoice_number}",
                 ]);
+
+                if ($notifyOutOfStock && $previousStock > 0 && $newStock <= 0) {
+                    $outOfStockProducts[] = $product->name;
+                }
             }
 
             return [
                 'sale' => new SaleResource($sale->load(['user', 'cashRegister', 'items.product'])),
+                'out_of_stock_products' => $outOfStockProducts,
                 'message' => 'Venta registrada exitosamente',
             ];
         });
     }
 
-    public function show(Sale $sale): array
+    public function show(Request $request, Sale $sale): array
     {
+        abort_if($request->user()->isLimitedToOwnRecords() && $sale->user_id !== $request->user()->id, 404);
+
         return [
             'sale' => new SaleResource($sale->load(['user', 'cashRegister', 'items.product'])),
         ];
@@ -147,12 +183,53 @@ class SaleController extends Controller
 
     public function update(UpdateSaleRequest $request, Sale $sale): array
     {
-        $sale->update($request->validated());
+        DB::transaction(function () use ($request, $sale) {
+            $sale = Sale::lockForUpdate()->findOrFail($sale->id);
+            if ($request->input('status') === 'cancelled' && $sale->status === 'completed') {
+                $this->reverseSale($sale);
+            }
+
+            $sale->update($request->validated());
+        });
+
+        $sale->refresh();
 
         return [
             'sale' => new SaleResource($sale->load(['user', 'items.product'])),
             'message' => 'Venta actualizada exitosamente',
         ];
+    }
+
+    /**
+     * Put the sold units back in stock and, while the register is still open,
+     * take the sale out of its totals so the cash count stays correct.
+     */
+    private function reverseSale(Sale $sale): void
+    {
+        if ($sale->returns()->where('status', '!=', 'rejected')->exists()) {
+            abort(422, 'No se puede cancelar una venta con devoluciones registradas.');
+        }
+
+        foreach ($sale->items as $item) {
+            $product = Product::lockForUpdate()->find($item->product_id);
+            $previousStock = $product->stock;
+            $product->increment('stock', $item->quantity);
+
+            InventoryMovement::create([
+                'product_id' => $product->id,
+                'user_id' => auth()->id(),
+                'type' => 'entry',
+                'quantity' => $item->quantity,
+                'previous_stock' => $previousStock,
+                'new_stock' => $previousStock + $item->quantity,
+                'reference' => "Cancelación venta #{$sale->invoice_number}",
+            ]);
+        }
+
+        $register = $sale->cashRegister;
+        if ($register?->status === 'open') {
+            $register->addSale(-$sale->total, $sale->payment_method);
+        }
     }
 
     public function destroy(Sale $sale): array

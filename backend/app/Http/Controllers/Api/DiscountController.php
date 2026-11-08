@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDiscountRequest;
 use App\Http\Requests\UpdateDiscountRequest;
 use App\Http\Resources\DiscountResource;
 use App\Models\Discount;
+use App\Support\SystemSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -75,6 +76,13 @@ class DiscountController extends Controller
             'code' => 'required|string',
             'purchase_amount' => 'required|numeric|min:0',
         ]);
+
+        if (! SystemSettings::value('allow_discounts', true)) {
+            return [
+                'valid' => false,
+                'message' => 'Los descuentos en ventas están deshabilitados',
+            ];
+        }
 
         $discount = Discount::where('code', $request->code)->first();
 

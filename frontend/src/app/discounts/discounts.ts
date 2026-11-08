@@ -5,6 +5,9 @@ import { DiscountService } from '../services/discount';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { DateInput } from '../directives/date-input';
+import { APP_PIPES } from '../pipes';
 
 interface Discount {
   id: number;
@@ -26,7 +29,7 @@ interface Discount {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, DateInput, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-discounts',
   styleUrl: './discounts.css',
   templateUrl: './discounts.html',

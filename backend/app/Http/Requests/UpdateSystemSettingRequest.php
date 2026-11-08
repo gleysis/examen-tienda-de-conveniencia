@@ -24,7 +24,7 @@ class UpdateSystemSettingRequest extends FormRequest
     {
         return [
             'value' => 'nullable|string',
-            'type' => 'sometimes|in:string,integer,float,boolean,array,json',
+            'type' => 'sometimes|in:string,text,integer,float,boolean,array,json',
             'group' => 'sometimes|string|max:100',
             'description' => 'nullable|string',
             'is_public' => 'sometimes|boolean',

@@ -7,6 +7,8 @@ import { UserService } from '../services/user';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
 
 interface Role {
   id: number;
@@ -31,7 +33,7 @@ interface User {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-users',
   styleUrl: './users.css',
   templateUrl: './users.html',
@@ -283,13 +285,8 @@ export class Users implements OnInit, OnChanges, OnDestroy {
     }
   }
 
-  toggleRole(roleId: number): void {
-    const index = this.formData.roles.indexOf(roleId);
-    if (index > -1) {
-      this.formData.roles.splice(index, 1);
-    } else {
-      this.formData.roles.push(roleId);
-    }
+  selectRole(roleId: number): void {
+    this.formData.roles = [roleId];
   }
 
   isRoleSelected(roleId: number): boolean {

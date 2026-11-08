@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreReturnRefundRequest;
 use App\Http\Requests\UpdateReturnRefundRequest;
 use App\Http\Resources\ReturnRefundResource;
+use App\Models\CashMovement;
+use App\Models\CashRegister;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ReturnRefund;
@@ -19,6 +21,14 @@ class ReturnRefundController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = ReturnRefund::with(['sale', 'saleItem', 'product', 'user']);
+
+        if ($request->user()->isLimitedToOwnRecords()) {
+            $query->where('user_id', $request->user()->id);
+        }
+
+        if ($request->filled('search')) {
+            $query->where('return_number', 'like', '%'.$request->search.'%');
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -40,10 +50,24 @@ class ReturnRefundController extends Controller
     public function store(StoreReturnRefundRequest $request): array
     {
         return DB::transaction(function () use ($request) {
-            $saleItem = SaleItem::findOrFail($request->sale_item_id);
+            $saleItem = SaleItem::with('sale')->lockForUpdate()->findOrFail($request->sale_item_id);
 
-            if ($request->quantity > $saleItem->quantity) {
-                abort(422, 'La cantidad a devolver no puede exceder la cantidad original comprada');
+            if ($saleItem->sale_id !== (int) $request->sale_id || $saleItem->product_id !== (int) $request->product_id) {
+                abort(422, 'El producto seleccionado no pertenece a esa venta');
+            }
+
+            if ($saleItem->sale->status !== 'completed') {
+                abort(422, 'Solo se pueden devolver productos de ventas completadas');
+            }
+
+            $returnableQuantity = $saleItem->returnableQuantity();
+            if ($request->quantity > $returnableQuantity) {
+                abort(422, "La cantidad a devolver excede lo disponible para devolución ({$returnableQuantity})");
+            }
+
+            $maxRefund = $saleItem->paidAmountFor($request->quantity);
+            if (round((float) $request->refund_amount, 2) > $maxRefund) {
+                abort(422, 'El monto a reembolsar no puede superar lo pagado por el cliente ('.number_format($maxRefund, 2).')');
             }
 
             $returnNumber = 'RET-'.str_pad(ReturnRefund::count() + 1, 6, '0', STR_PAD_LEFT);
@@ -70,8 +94,10 @@ class ReturnRefundController extends Controller
         });
     }
 
-    public function show(ReturnRefund $returnRefund): array
+    public function show(Request $request, ReturnRefund $returnRefund): array
     {
+        abort_if($request->user()->isLimitedToOwnRecords() && $returnRefund->user_id !== $request->user()->id, 404);
+
         return [
             'return_refund' => new ReturnRefundResource($returnRefund->load(['sale', 'saleItem', 'product', 'user'])),
         ];
@@ -79,6 +105,15 @@ class ReturnRefundController extends Controller
 
     public function update(UpdateReturnRefundRequest $request, ReturnRefund $returnRefund): array
     {
+        if ($returnRefund->status === 'processed') {
+            abort(422, 'No se puede modificar una devolución procesada');
+        }
+
+        $isReopening = $returnRefund->status === 'rejected' && $request->filled('status') && $request->status !== 'rejected';
+        if ($isReopening && $returnRefund->quantity > $returnRefund->saleItem->returnableQuantity()) {
+            abort(422, 'Esos productos ya están incluidos en otra devolución');
+        }
+
         $returnRefund->update($request->validated());
 
         return [
@@ -89,11 +124,26 @@ class ReturnRefundController extends Controller
 
     public function process(Request $request, ReturnRefund $returnRefund): array
     {
-        if ($returnRefund->status !== 'approved') {
-            abort(422, 'Solo se pueden procesar devoluciones aprobadas');
-        }
-
         return DB::transaction(function () use ($request, $returnRefund) {
+            $returnRefund = ReturnRefund::lockForUpdate()->findOrFail($returnRefund->id);
+
+            if ($returnRefund->status !== 'approved') {
+                abort(422, 'Solo se pueden procesar devoluciones aprobadas');
+            }
+
+            if ($returnRefund->refund_method === 'cash') {
+                $register = CashRegister::where('user_id', auth()->id())->open()->first();
+                abort_unless($register, 422, 'Abre tu caja para entregar un reembolso en efectivo.');
+
+                $movement = $register->movements()->create([
+                    'user_id' => auth()->id(),
+                    'type' => CashMovement::TYPE_WITHDRAWAL,
+                    'amount' => $returnRefund->refund_amount,
+                    'reason' => "Reembolso devolución #{$returnRefund->return_number}",
+                ]);
+                $register->addMovement($movement->type, (float) $movement->amount);
+            }
+
             $product = Product::findOrFail($returnRefund->product_id);
             $previousStock = $product->stock;
             $newStock = $previousStock + $returnRefund->quantity;

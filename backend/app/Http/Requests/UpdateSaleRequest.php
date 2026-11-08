@@ -23,9 +23,8 @@ class UpdateSaleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'sometimes|in:pending,completed,cancelled',
-            'payment_method' => 'sometimes|in:cash,card,transfer',
-            'notes' => 'nullable|string',
+            'status' => 'sometimes|in:cancelled',
+            'notes' => 'nullable|string|max:1000',
         ];
     }
 }

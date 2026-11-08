@@ -4,13 +4,9 @@
 
 .roles-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 20px;
-}
-
-.roles-header h2 {
-  margin: 0;
 }
 
 .btn-create {
@@ -18,7 +14,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #2563eb;
+  background: var(--color-primary);
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -31,7 +27,7 @@
 }
 
 .error-message {
-  background: #fee2e2;
+  background: var(--tint-fee2e2);
   color: #b91c1c;
   padding: 12px 16px;
   border-radius: 6px;
@@ -44,8 +40,8 @@
 }
 
 .spinner {
-  border: 3px solid #e5e7eb;
-  border-top-color: #2563eb;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -60,8 +56,8 @@
 }
 
 .roles-table-container {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -75,19 +71,19 @@
 .roles-table td {
   padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 14px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
 }
 
 .roles-table thead {
-  background: #f9fafb;
+  background: var(--color-surface-muted);
 }
 
 .roles-table code {
-  background: #f3f4f6;
+  background: var(--color-surface-muted);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .btn-icon {
@@ -95,7 +91,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .btn-icon svg {
@@ -104,7 +100,7 @@
 }
 
 .btn-icon:hover {
-  color: #2563eb;
+  color: var(--color-primary);
 }
 
 .btn-icon.btn-danger:hover {
@@ -114,7 +110,7 @@
 .no-roles {
   text-align: center;
   padding: 40px;
-  color: #6b7280;
+  color: var(--color-text-muted);
 }
 
 .modal-overlay {
@@ -128,7 +124,7 @@
 }
 
 .modal-content {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 8px;
   padding: 24px;
   width: 420px;
@@ -150,13 +146,13 @@
 
 .modal-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 .btn-close {
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 1.125rem;
   cursor: pointer;
 }
 
@@ -167,21 +163,21 @@
 .form-group label {
   display: block;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .form-group input,
 .form-group textarea {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   box-sizing: border-box;
 }
 
 .field-error {
   color: #dc2626;
-  font-size: 12px;
+  font-size: 0.75rem;
   margin-top: 4px;
   display: block;
 }
@@ -196,7 +192,7 @@
 }
 
 .permission-group {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 10px;
 }
@@ -220,13 +216,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   cursor: pointer;
 }
 
 .permission-slug {
-  color: #9ca3af;
-  font-size: 11px;
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
 }
 
 .form-actions {
@@ -238,7 +234,7 @@
 
 .btn-cancel {
   padding: 8px 16px;
-  background: #e5e7eb;
+  background: var(--color-surface-muted);
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -246,7 +242,7 @@
 
 .btn-save {
   padding: 8px 16px;
-  background: #2563eb;
+  background: var(--color-primary);
   color: #fff;
   border: none;
   border-radius: 6px;

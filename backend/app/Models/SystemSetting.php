@@ -20,6 +20,12 @@ class SystemSetting extends Model
         'is_public' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(fn (SystemSetting $setting) => Cache::forget("setting_{$setting->key}"));
+        static::deleted(fn (SystemSetting $setting) => Cache::forget("setting_{$setting->key}"));
+    }
+
     public static function get(string $key, $default = null)
     {
         return Cache::remember("setting_{$key}", 3600, function () use ($key, $default) {
@@ -37,7 +43,7 @@ class SystemSetting extends Model
         self::updateOrCreate(
             ['key' => $key],
             [
-                'value' => $value,
+                'value' => self::normalizeValue($value),
                 'type' => $type,
                 'group' => $group,
                 'description' => $description,
@@ -48,7 +54,23 @@ class SystemSetting extends Model
         Cache::forget("setting_{$key}");
     }
 
-    private static function castValue($value, string $type)
+    /**
+     * Convert a value to the string representation stored in the database.
+     */
+    public static function normalizeValue($value)
+    {
+        if (is_array($value)) {
+            return json_encode($value);
+        }
+
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        return $value;
+    }
+
+    public static function castValue($value, string $type)
     {
         return match ($type) {
             'boolean', 'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN),

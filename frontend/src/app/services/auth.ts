@@ -4,23 +4,33 @@ import { Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 
+interface Permission {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+interface Role {
+  id: number;
+  name: string;
+  slug: string;
+  permissions?: Permission[];
+}
+
+interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  roles?: Role[];
+}
+
 interface LoginResponse {
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    roles?: any[];
-  };
+  user: AuthUser;
   token: string;
 }
 
 interface UserResponse {
-  user: {
-    id: number;
-    name: string;
-    email: string;
-    roles?: any[];
-  };
+  user: AuthUser;
 }
 
 @Injectable({
@@ -71,6 +81,10 @@ export class AuthService {
   getUser(): Observable<UserResponse> {
     console.log('AuthService - Getting current user');
     return this.http.get<UserResponse>(`${this.apiUrl}/user`).pipe(
+      map((response) => {
+        localStorage.setItem('user', JSON.stringify(response.user));
+        return response;
+      }),
       catchError((error) => {
         console.error('AuthService - Get user error:', error);
         return throwError(() => error);
@@ -90,5 +104,32 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem('auth_token');
+  }
+
+  getPermissions(): string[] {
+    const user = this.getCurrentUser();
+    if (!user?.roles) {
+      return [];
+    }
+    const slugs = new Set<string>();
+    for (const role of user.roles) {
+      for (const permission of role.permissions ?? []) {
+        slugs.add(permission.slug);
+      }
+    }
+    return [...slugs];
+  }
+
+  hasPermission(permission: string): boolean {
+    return this.getPermissions().includes(permission);
+  }
+
+  hasAnyPermission(permissions: string[]): boolean {
+    return permissions.some((permission) => this.hasPermission(permission));
+  }
+
+  hasPermissionsLoaded(): boolean {
+    const user = this.getCurrentUser();
+    return !!user?.roles?.some((role: Role) => Array.isArray(role.permissions));
   }
 }

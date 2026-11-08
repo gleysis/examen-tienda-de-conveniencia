@@ -72,7 +72,10 @@ class PermissionSeeder extends Seeder
 
             // Settings
             ['name' => 'Ver configuración', 'slug' => 'settings.view', 'description' => 'Ver configuración del sistema'],
-            ['name' => 'Editar configuración', 'slug' => 'settings.edit', 'description' => 'Editar configuración del sistema'],
+            ['name' => 'Editar configuración', 'slug' => 'settings.edit', 'description' => 'Editar toda la configuración del sistema'],
+            ['name' => 'Editar configuración del punto de venta', 'slug' => 'settings.pos.edit', 'description' => 'Editar la configuración de la caja y el recibo'],
+            ['name' => 'Editar configuración de inventario', 'slug' => 'settings.inventory.edit', 'description' => 'Editar umbrales y alertas de stock'],
+            ['name' => 'Gestionar respaldos', 'slug' => 'backups.manage', 'description' => 'Crear, descargar, eliminar y restaurar respaldos de la base de datos'],
 
             // Reports
             ['name' => 'Ver reportes', 'slug' => 'reports.view', 'description' => 'Ver reportes del sistema'],
@@ -100,8 +103,14 @@ class PermissionSeeder extends Seeder
         }
 
         if ($managerRole) {
-            // Manager has most permissions except user management
-            $managerPermissions = Permission::whereNotIn('slug', ['users.create', 'users.edit', 'users.delete'])->pluck('id');
+            // Manager has most permissions except user management, global settings and backups
+            $managerPermissions = Permission::whereNotIn('slug', [
+                'users.create',
+                'users.edit',
+                'users.delete',
+                'settings.edit',
+                'backups.manage',
+            ])->pluck('id');
             $managerRole->permissions()->sync($managerPermissions);
         }
 
@@ -110,6 +119,8 @@ class PermissionSeeder extends Seeder
             $cashierPermissions = Permission::whereIn('slug', [
                 'sales.view',
                 'sales.create',
+                'products.view',
+                'categories.view',
                 'inventory.view',
                 'inventory.low-stock',
                 'discounts.validate',
@@ -139,6 +150,7 @@ class PermissionSeeder extends Seeder
                 'categories.view',
                 'categories.create',
                 'categories.edit',
+                'settings.inventory.edit',
                 'reports.view',
             ])->pluck('id');
             $warehouseRole->permissions()->sync($warehousePermissions);

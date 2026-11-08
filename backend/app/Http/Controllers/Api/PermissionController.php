@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePermissionRequest;
 use App\Http\Requests\UpdatePermissionRequest;
 use App\Models\Permission;
+use Illuminate\Http\Request;
 
 class PermissionController extends Controller
 {
@@ -41,8 +42,10 @@ class PermissionController extends Controller
         ];
     }
 
-    public function destroy(Permission $permission): array
+    public function destroy(Request $request, Permission $permission): array
     {
+        abort_unless($request->user()->holdsAllPermissions([$permission->slug]), 403);
+
         $permission->delete();
 
         return [

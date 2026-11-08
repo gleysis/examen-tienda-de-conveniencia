@@ -24,6 +24,7 @@ class ProductResource extends JsonResource
             'stock' => $this->stock,
             'min_stock' => $this->min_stock,
             'max_stock' => $this->max_stock,
+            'expiry_date' => $this->expiry_date?->toDateString(),
             'barcode' => $this->barcode,
             'image' => $this->image,
             'is_active' => $this->is_active,

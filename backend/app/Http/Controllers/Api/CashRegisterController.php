@@ -46,8 +46,10 @@ class CashRegisterController extends Controller
         ];
     }
 
-    public function show(CashRegister $cashRegister): array
+    public function show(Request $request, CashRegister $cashRegister): array
     {
+        abort_if($request->user()->isLimitedToOwnRecords() && $cashRegister->user_id !== $request->user()->id, 404);
+
         $cashRegister->load(['user', 'sales']);
 
         return [
@@ -71,6 +73,10 @@ class CashRegisterController extends Controller
             abort(422, 'Esta caja registradora ya está abierta');
         }
 
+        if (CashRegister::where('user_id', auth()->id())->open()->exists()) {
+            abort(422, 'Ya tienes otra caja abierta. Ciérrala antes de abrir una nueva.');
+        }
+
         $cashRegister->open($request->opening_balance, auth()->id());
 
         return [
@@ -83,6 +89,10 @@ class CashRegisterController extends Controller
     {
         if ($cashRegister->status === 'closed') {
             abort(422, 'Esta caja registradora ya está cerrada');
+        }
+
+        if ($request->user()->isLimitedToOwnRecords() && $cashRegister->user_id !== $request->user()->id) {
+            abort(403, 'Solo puedes cerrar tu propia caja.');
         }
 
         $cashRegister->close($request->actual_closing);

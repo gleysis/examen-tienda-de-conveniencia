@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CreatesUsersWithPermissions;
@@ -46,21 +47,22 @@ class CashRegisterTest extends TestCase
             'current_balance' => 100.00,
             'expected_closing' => 100.00,
         ]);
-        $product = Product::factory()->create(['stock' => 10]);
+        SystemSettings::updateMany(['tax_rate' => 0]);
+        $product = Product::factory()->create(['stock' => 10, 'price' => 25.00]);
         Sanctum::actingAs($cashier);
 
         $this->postJson('/api/sales', [
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 2, 'unit_price' => 25.00],
+                ['product_id' => $product->id, 'quantity' => 2],
             ],
             'payment_method' => 'cash',
         ])->assertOk();
 
         $register->refresh();
-        $this->assertSame('150.00', $register->current_balance);
-        $this->assertSame('50.00', $register->cash_sales);
-        $this->assertSame('50.00', $register->total_sales);
-        $this->assertSame('150.00', $register->expected_closing);
+        $this->assertSame(150.0, $register->current_balance);
+        $this->assertSame(50.0, $register->cash_sales);
+        $this->assertSame(50.0, $register->total_sales);
+        $this->assertSame(150.0, $register->expected_closing);
         $this->assertDatabaseHas('sales', ['cash_register_id' => $register->id]);
     }
 
@@ -75,20 +77,21 @@ class CashRegisterTest extends TestCase
             'current_balance' => 100.00,
             'expected_closing' => 100.00,
         ]);
-        $product = Product::factory()->create(['stock' => 10]);
+        SystemSettings::updateMany(['tax_rate' => 0]);
+        $product = Product::factory()->create(['stock' => 10, 'price' => 80.00]);
         Sanctum::actingAs($cashier);
 
         $this->postJson('/api/sales', [
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 80.00],
+                ['product_id' => $product->id, 'quantity' => 1],
             ],
             'payment_method' => 'card',
         ])->assertOk();
 
         $register->refresh();
-        $this->assertSame('100.00', $register->current_balance);
-        $this->assertSame('80.00', $register->card_sales);
-        $this->assertSame('100.00', $register->expected_closing);
+        $this->assertSame(100.0, $register->current_balance);
+        $this->assertSame(80.0, $register->card_sales);
+        $this->assertSame(100.0, $register->expected_closing);
     }
 
     public function test_closing_register_computes_cash_difference(): void
@@ -113,8 +116,8 @@ class CashRegisterTest extends TestCase
         $response->assertOk();
         $register->refresh();
         $this->assertSame('closed', $register->status);
-        $this->assertSame('145.00', $register->actual_closing);
-        $this->assertSame('-5.00', $register->difference);
+        $this->assertSame(145.0, $register->actual_closing);
+        $this->assertSame(-5.0, $register->difference);
         $this->assertNotNull($register->closed_at);
     }
 

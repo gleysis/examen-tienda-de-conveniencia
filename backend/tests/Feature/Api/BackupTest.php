@@ -17,7 +17,7 @@ class BackupTest extends TestCase
 
     public function test_creates_and_lists_backup(): void
     {
-        $admin = $this->userWithPermissions(['settings.edit']);
+        $admin = $this->userWithPermissions(['backups.manage']);
         Sanctum::actingAs($admin);
 
         $response = $this->postJson('/api/backups');
@@ -32,7 +32,7 @@ class BackupTest extends TestCase
 
     public function test_downloads_backup_file(): void
     {
-        $admin = $this->userWithPermissions(['settings.edit']);
+        $admin = $this->userWithPermissions(['backups.manage']);
         Sanctum::actingAs($admin);
 
         $filename = $this->postJson('/api/backups')->json('backup.filename');
@@ -42,7 +42,7 @@ class BackupTest extends TestCase
 
     public function test_restores_database_from_sql_file(): void
     {
-        $admin = $this->userWithPermissions(['settings.edit']);
+        $admin = $this->userWithPermissions(['backups.manage']);
         Sanctum::actingAs($admin);
 
         $product = Product::factory()->create(['name' => 'Producto Respaldo']);
@@ -61,7 +61,7 @@ class BackupTest extends TestCase
 
     public function test_rejects_non_sql_restore_file(): void
     {
-        $admin = $this->userWithPermissions(['settings.edit']);
+        $admin = $this->userWithPermissions(['backups.manage']);
         Sanctum::actingAs($admin);
 
         $file = UploadedFile::fake()->createWithContent('respaldo.txt', 'select 1');

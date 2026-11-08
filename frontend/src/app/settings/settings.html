@@ -1,111 +1,211 @@
+<app-layout
+  [userName]="user?.name"
+  [pageTitle]="hasSystemAccess ? 'Configuración del Sistema' : 'Configuración'"
+  [pageSubtitle]="hasSystemAccess
+    ? 'Administra tus preferencias y la configuración del negocio que te corresponde.'
+    : 'Personaliza el tema, el idioma y los formatos de tu usuario.'"
+  (logout)="logout()"
+>
 <div class="settings-container">
-  <div class="header">
-    <h1>Configuración del Sistema</h1>
-    <button (click)="showAddForm()" class="btn btn-primary">Nueva Configuración</button>
+  <div class="page-header" *ngIf="canViewHistory">
+    <button *ngIf="canViewHistory" type="button" class="btn btn-outline" (click)="openHistory()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+      </svg>
+      {{ 'Historial de cambios' | t }}
+    </button>
   </div>
 
-  <div class="group-tabs">
-    <button
-      class="tab-button"
-      [class.active]="activeGroup === 'all'"
-      (click)="setGroup('all')"
-    >
-      Todas
-    </button>
+  <div class="group-tabs" role="tablist">
     <button
       *ngFor="let group of groups"
+      type="button"
+      role="tab"
       class="tab-button"
-      [class.active]="activeGroup === group"
-      (click)="setGroup(group)"
+      [class.active]="activeGroup === group.key"
+      [attr.aria-selected]="activeGroup === group.key"
+      (click)="setGroup(group.key)"
     >
-      {{ group.charAt(0).toUpperCase() + group.slice(1) }}
+      {{ group.label | t }}
     </button>
   </div>
 
-  <div *ngIf="errorMessage" class="error-message">
-    {{ errorMessage }}
+  <div *ngIf="errorMessage" class="error-message" role="alert">
+    {{ errorMessage | t }}
+    <button type="button" class="error-close" (click)="errorMessage = ''" [attr.aria-label]="'Cerrar' | t">×</button>
   </div>
 
-  <div *ngIf="isLoading" class="loading">Cargando...</div>
-
-  <div *ngIf="!isLoading && !showForm" class="settings-table">
-    <table>
-      <thead>
-        <tr>
-          <th>Clave</th>
-          <th>Valor</th>
-          <th>Tipo</th>
-          <th>Grupo</th>
-          <th>Descripción</th>
-          <th>Pública</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let setting of settings">
-          <td>{{ setting.key }}</td>
-          <td>{{ getDisplayValue(setting) }}</td>
-          <td>{{ getTypeLabel(setting.type) }}</td>
-          <td>{{ setting.group }}</td>
-          <td>{{ setting.description || '-' }}</td>
-          <td>
-            <span [class]="setting.is_public ? 'public-yes' : 'public-no'">
-              {{ setting.is_public ? 'Sí' : 'No' }}
-            </span>
-          </td>
-          <td>
-            <button (click)="editSetting(setting)" class="btn btn-sm btn-info">Editar</button>
-            <button (click)="deleteSetting(setting)" class="btn btn-sm btn-danger">Eliminar</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div *ngIf="!canEdit && !isLoading && currentGroup" class="readonly-notice">
+    {{ 'Solo tienes permiso para ver esta sección. Pide a un administrador que realice los cambios.' | t }}
   </div>
 
-  <div *ngIf="showForm" class="setting-form">
-    <h2>{{ editingSetting ? 'Editar Configuración' : 'Nueva Configuración' }}</h2>
-    <form (ngSubmit)="saveSetting()">
-      <div class="form-group">
-        <label>Clave *</label>
-        <input type="text" [(ngModel)]="settingForm.key" name="key" required />
+  <div *ngIf="isLoading" class="loading">{{ 'Cargando...' | t }}</div>
+
+  <div *ngIf="!isLoading && currentGroup as group" class="settings-panel">
+    <div class="panel-header">
+      <h2>{{ group.label | t }}</h2>
+      <p *ngIf="group.description">{{ group.description | t }}</p>
+    </div>
+
+    <form (ngSubmit)="saveGroup()" class="settings-form">
+      <div class="field" *ngFor="let field of group.fields">
+        <div class="field-label">
+          <label [for]="field.key">{{ field.label | t }}</label>
+          <small *ngIf="field.description" class="field-help">{{ field.description | t }}</small>
+        </div>
+
+        <div class="field-input" [ngSwitch]="field.type">
+          <label *ngSwitchCase="'boolean'" class="toggle">
+            <input type="checkbox" [id]="field.key" [name]="field.key" [(ngModel)]="field.value" [disabled]="!canEdit" />
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">{{ (field.value ? 'Activado' : 'Desactivado') | t }}</span>
+          </label>
+
+          <textarea
+            *ngSwitchCase="'text'"
+            [id]="field.key"
+            [name]="field.key"
+            [(ngModel)]="field.value"
+            [disabled]="!canEdit"
+            rows="3"
+          ></textarea>
+
+          <input
+            *ngSwitchCase="'integer'"
+            type="number"
+            [id]="field.key"
+            [name]="field.key"
+            [(ngModel)]="field.value"
+            [disabled]="!canEdit"
+            step="1"
+            min="0"
+          />
+
+          <input
+            *ngSwitchCase="'float'"
+            type="number"
+            [id]="field.key"
+            [name]="field.key"
+            [(ngModel)]="field.value"
+            [disabled]="!canEdit"
+            [step]="inputStep(field)"
+            min="0"
+          />
+
+          <select *ngSwitchCase="'select'" [id]="field.key" [name]="field.key" [(ngModel)]="field.value" [disabled]="!canEdit">
+            <option *ngFor="let opt of optionEntries(field)" [value]="opt.value">{{ opt.label | t }}</option>
+          </select>
+
+          <div *ngSwitchCase="'image'" class="logo-field">
+            <div class="logo-preview" [class.empty]="!field.value">
+              <img *ngIf="field.value" [src]="field.value" [alt]="'Logo de la tienda' | t" />
+              <span *ngIf="!field.value">{{ 'Sin logo' | t }}</span>
+            </div>
+            <div class="logo-actions" *ngIf="canEdit">
+              <label class="btn btn-outline btn-sm-file" [class.disabled]="isUploadingLogo">
+                {{ (isUploadingLogo ? 'Subiendo...' : (field.value ? 'Cambiar logo' : 'Subir logo')) | t }}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  (change)="onLogoSelected($event)"
+                  [disabled]="isUploadingLogo"
+                  hidden
+                />
+              </label>
+              <button
+                *ngIf="field.value"
+                type="button"
+                class="btn btn-link-danger"
+                (click)="removeLogo()"
+                [disabled]="isUploadingLogo"
+              >
+                {{ 'Quitar logo' | t }}
+              </button>
+            </div>
+          </div>
+
+          <input
+            *ngSwitchDefault
+            type="text"
+            [id]="field.key"
+            [name]="field.key"
+            [(ngModel)]="field.value"
+            [disabled]="!canEdit"
+          />
+        </div>
       </div>
-      <div class="form-group">
-        <label>Valor</label>
-        <input type="text" [(ngModel)]="settingForm.value" name="value" />
-      </div>
-      <div class="form-group">
-        <label>Tipo *</label>
-        <select [(ngModel)]="settingForm.type" name="type" required>
-          <option value="string">Texto</option>
-          <option value="integer">Entero</option>
-          <option value="float">Decimal</option>
-          <option value="boolean">Booleano</option>
-          <option value="array">Arreglo</option>
-          <option value="json">JSON</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Grupo *</label>
-        <select [(ngModel)]="settingForm.group" name="group" required>
-          <option *ngFor="let group of groups" [value]="group">
-            {{ group.charAt(0).toUpperCase() + group.slice(1) }}
-          </option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Descripción</label>
-        <textarea [(ngModel)]="settingForm.description" name="description" rows="3"></textarea>
-      </div>
-      <div class="form-group">
-        <label>
-          <input type="checkbox" [(ngModel)]="settingForm.is_public" name="is_public" />
-          Pública (accesible desde el frontend)
-        </label>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Guardar</button>
-        <button type="button" (click)="cancelForm()" class="btn btn-secondary">Cancelar</button>
+
+      <div class="form-actions" *ngIf="canEdit">
+        <button type="button" class="btn btn-outline" (click)="resetGroup()" [disabled]="isSaving">
+          {{ 'Restablecer valores' | t }}
+        </button>
+        <span class="spacer"></span>
+        <span *ngIf="isDirty" class="unsaved-indicator">{{ 'Cambios sin guardar' | t }}</span>
+        <button type="button" class="btn btn-secondary" (click)="discardChanges()" [disabled]="!isDirty || isSaving">
+          {{ 'Descartar' | t }}
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="!isDirty || isSaving">
+          {{ (isSaving ? 'Guardando...' : 'Guardar cambios') | t }}
+        </button>
       </div>
     </form>
   </div>
 </div>
+
+<div class="history-overlay" *ngIf="showHistory" (click)="closeHistory()">
+  <div class="history-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+    <div class="history-header">
+      <h2>{{ 'Historial de cambios' | t }}</h2>
+      <button type="button" class="error-close" (click)="closeHistory()" [attr.aria-label]="'Cerrar' | t">×</button>
+    </div>
+
+    <div *ngIf="historyLoading" class="loading">{{ 'Cargando...' | t }}</div>
+
+    <div *ngIf="!historyLoading" class="history-body">
+      <table class="history-table" *ngIf="history.length; else noHistory">
+        <thead>
+          <tr>
+            <th>{{ 'Fecha' | t }}</th>
+            <th>{{ 'Administrador' | t }}</th>
+            <th>{{ 'Configuración' | t }}</th>
+            <th>{{ 'Valor anterior' | t }}</th>
+            <th>{{ 'Valor nuevo' | t }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let change of history">
+            <td class="nowrap">{{ change.created_at | appDate:'datetime' }}</td>
+            <td>{{ change.user?.name || ('Sistema' | t) }}</td>
+            <td>{{ change.label | t }}</td>
+            <td class="old-value">{{ formatHistoryValue(change, change.old_value) }}</td>
+            <td class="new-value">{{ formatHistoryValue(change, change.new_value) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #noHistory>
+        <p class="empty-state">{{ 'Todavía no hay cambios registrados.' | t }}</p>
+      </ng-template>
+    </div>
+
+    <div class="history-footer" *ngIf="historyMeta && historyMeta.last_page > 1">
+      <button
+        type="button"
+        class="btn btn-outline"
+        (click)="loadHistory(historyMeta.current_page - 1)"
+        [disabled]="historyMeta.current_page <= 1 || historyLoading"
+      >
+        {{ 'Anterior' | t }}
+      </button>
+      <span>{{ 'Página {page} de {pages}' | t: { page: historyMeta.current_page, pages: historyMeta.last_page } }}</span>
+      <button
+        type="button"
+        class="btn btn-outline"
+        (click)="loadHistory(historyMeta.current_page + 1)"
+        [disabled]="historyMeta.current_page >= historyMeta.last_page || historyLoading"
+      >
+        {{ 'Siguiente' | t }}
+      </button>
+    </div>
+  </div>
+</div>
+</app-layout>

@@ -85,8 +85,8 @@ class InventoryController extends Controller
     public function lowStock(): array
     {
         $products = Product::with('category')
-            ->whereColumn('stock', '<=', 'min_stock')
             ->where('is_active', true)
+            ->where(fn ($query) => $query->lowStock()->orWhere('stock', '<=', 0))
             ->get();
 
         return [
@@ -109,8 +109,9 @@ class InventoryController extends Controller
             return $product->stock * $product->cost;
         });
 
-        $lowStockCount = $products->where('stock', '<=', 'min_stock')->count();
-        $lowStockProducts = $products->where('stock', '<=', 'min_stock')->values();
+        $lowStockProducts = $products
+            ->filter(fn ($product) => $product->stock <= $product->effectiveMinStock())
+            ->values();
 
         return [
             'products' => $products,
@@ -118,7 +119,7 @@ class InventoryController extends Controller
                 'total_products' => $products->count(),
                 'total_stock' => $totalStock,
                 'total_value' => $totalValue,
-                'low_stock_count' => $lowStockCount,
+                'low_stock_count' => $lowStockProducts->count(),
                 'low_stock_products' => $lowStockProducts,
             ],
         ];

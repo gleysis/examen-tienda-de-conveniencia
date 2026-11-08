@@ -41,7 +41,7 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request): array
     {
-        $product = Product::create($request->validated());
+        $product = Product::create($this->productData($request));
 
         return [
             'product' => new ProductResource($product->load('category')),
@@ -58,7 +58,7 @@ class ProductController extends Controller
 
     public function update(UpdateProductRequest $request, Product $product): array
     {
-        $product->update($request->validated());
+        $product->update($this->productData($request));
 
         return [
             'product' => new ProductResource($product->load(['category', 'supplier'])),
@@ -73,5 +73,21 @@ class ProductController extends Controller
         return [
             'message' => 'Producto eliminado exitosamente',
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function productData(StoreProductRequest|UpdateProductRequest $request): array
+    {
+        $data = $request->validated();
+        unset($data['image_file']);
+
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $data['image'] = asset('storage/'.$path);
+        }
+
+        return $data;
     }
 }

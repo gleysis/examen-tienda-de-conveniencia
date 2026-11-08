@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdatePermissionRequest extends FormRequest
 {
@@ -13,11 +12,12 @@ class UpdatePermissionRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->holdsAllPermissions([$this->route('permission')->slug]);
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * The slug is immutable: authorization checks reference it in code, so renaming
+     * a permission could silently grant or revoke access.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -25,7 +25,6 @@ class UpdatePermissionRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|required|string',
-            'slug' => ['sometimes', 'required', 'string', Rule::unique('permissions', 'slug')->ignore($this->route('permission'))],
             'description' => 'nullable|string',
         ];
     }

@@ -31,6 +31,7 @@ export interface Sale {
 
 interface SaleResponse {
   sale?: Sale;
+  out_of_stock_products?: string[];
   message?: string;
   error?: string;
 }

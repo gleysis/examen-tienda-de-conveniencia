@@ -23,7 +23,7 @@ class UpdateReturnRefundRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'sometimes|in:pending,approved,rejected,processed',
+            'status' => 'sometimes|in:pending,approved,rejected',
             'refund_method' => 'sometimes|in:cash,card,transfer,store_credit',
             'reference_number' => 'nullable|string',
             'notes' => 'nullable|string',

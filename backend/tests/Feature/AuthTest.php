@@ -40,7 +40,60 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email' => 'Correo o contraseña incorrectos.']);
+    }
+
+    public function test_login_returns_same_message_for_unknown_email(): void
+    {
+        $this->postJson('/api/login', [
+            'email' => 'nadie@pos.com',
+            'password' => 'wrong-password',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['email' => 'Correo o contraseña incorrectos.']);
+    }
+
+    public function test_login_validation_messages_are_in_spanish(): void
+    {
+        $this->postJson('/api/login', ['email' => 'no-es-un-correo'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'email' => 'El campo correo electrónico debe ser un correo electrónico válido (ej. nombre@dominio.com).',
+                'password' => 'El campo contraseña es obligatorio.',
+            ]);
+    }
+
+    public function test_login_is_throttled_after_too_many_failed_attempts(): void
+    {
+        User::factory()->create(['email' => 'cajero@pos.com']);
+
+        foreach (range(1, 5) as $attempt) {
+            $this->postJson('/api/login', [
+                'email' => 'cajero@pos.com',
+                'password' => 'wrong-password',
+            ])->assertUnprocessable();
+        }
+
+        $this->postJson('/api/login', [
+            'email' => 'cajero@pos.com',
+            'password' => 'wrong-password',
+        ])->assertTooManyRequests()
             ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_missing_record_returns_spanish_not_found_message(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/route-that-does-not-exist')
+            ->assertNotFound()
+            ->assertJsonPath('message', 'El registro solicitado no existe o fue eliminado.');
+    }
+
+    public function test_unauthenticated_request_returns_spanish_message(): void
+    {
+        $this->getJson('/api/user')
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Tu sesión ha expirado. Inicia sesión nuevamente.');
     }
 
     public function test_protected_route_returns_401_without_token(): void

@@ -25,7 +25,7 @@ class ReturnRefund extends Model
 
     protected $casts = [
         'quantity' => 'integer',
-        'refund_amount' => 'decimal:2',
+        'refund_amount' => 'float',
         'processed_date' => 'date',
     ];
 

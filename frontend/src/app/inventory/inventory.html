@@ -1,57 +1,57 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'">
+<app-layout [userName]="user?.name">
   <div class="inventory-container">
     <div class="inventory-header">
       <div class="filters-section">
         <input
           type="text"
-          placeholder="Buscar productos..."
+          [attr.placeholder]="'Buscar productos...' | t"
           class="search-input"
         />
       </div>
-      <button (click)="openForm()" class="btn-create">
+      <button (click)="openForm()" class="btn-create" *appHasPermission="'inventory.create'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14 M5 12h14"></path>
         </svg>
-        Registrar Movimiento
+        {{ 'Registrar Movimiento' | t }}
       </button>
     </div>
 
     <div class="error-message" *ngIf="errorMessage">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
     <div class="tabs">
       <button class="tab" [class.active]="activeTab === 'movements'" (click)="activeTab = 'movements'">
-        Movimientos
+        {{ 'Movimientos' | t }}
       </button>
       <button class="tab" [class.active]="activeTab === 'products'" (click)="activeTab = 'products'">
-        Productos
+        {{ 'Productos' | t }}
       </button>
     </div>
 
     <div class="movements-table-container" *ngIf="!isLoading && activeTab === 'movements'">
       <div class="no-products" *ngIf="movements.length === 0">
-        <p>No hay movimientos registrados</p>
+        <p>{{ 'No hay movimientos registrados' | t }}</p>
       </div>
       <table class="inventory-table" *ngIf="movements.length > 0">
         <thead>
           <tr>
-            <th>Fecha</th>
-            <th>Producto</th>
-            <th>Tipo</th>
-            <th>Cantidad</th>
-            <th>Stock</th>
-            <th>Referencia</th>
-            <th>Usuario</th>
+            <th>{{ 'Fecha' | t }}</th>
+            <th>{{ 'Producto' | t }}</th>
+            <th>{{ 'Tipo' | t }}</th>
+            <th>{{ 'Cantidad' | t }}</th>
+            <th>{{ 'Stock' | t }}</th>
+            <th>{{ 'Referencia' | t }}</th>
+            <th>{{ 'Usuario' | t }}</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let movement of movements">
-            <td>{{ movement.created_at | date:'dd/MM/yy HH:mm' }}</td>
+            <td>{{ movement.created_at | appDate:'datetime' }}</td>
             <td>{{ movement.product?.name || '—' }}</td>
             <td>
               <span class="movement-badge" [class.entry]="movement.type === 'entry'" [class.exit]="movement.type === 'exit'">
-                {{ getMovementTypeLabel(movement.type) }}
+                {{ getMovementTypeLabel(movement.type) | t }}
               </span>
             </td>
             <td>{{ movement.quantity }}</td>
@@ -63,9 +63,9 @@
       </table>
 
       <div class="pagination" *ngIf="meta.last_page > 1">
-        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
-        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} movimientos)</span>
-        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">{{ 'Anterior' | t }}</button>
+        <span>{{ 'Página' | t }} {{ meta.current_page }} {{ 'de' | t }} {{ meta.last_page }} ({{ meta.total }} {{ 'movimientos)' | t }}</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">{{ 'Siguiente' | t }}</button>
       </div>
     </div>
 
@@ -74,16 +74,16 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
         </svg>
-        <p>No hay productos en inventario</p>
+        <p>{{ 'No hay productos en inventario' | t }}</p>
       </div>
       <table class="inventory-table" *ngIf="products.length > 0">
         <thead>
           <tr>
-            <th>Producto</th>
-            <th>Categoría</th>
-            <th>Stock Actual</th>
-            <th>Stock Mínimo</th>
-            <th>Estado</th>
+            <th>{{ 'Producto' | t }}</th>
+            <th>{{ 'Categoría' | t }}</th>
+            <th>{{ 'Stock Actual' | t }}</th>
+            <th>{{ 'Stock Mínimo' | t }}</th>
+            <th>{{ 'Estado' | t }}</th>
           </tr>
         </thead>
         <tbody>
@@ -94,7 +94,7 @@
             <td>{{ product.min_stock || 0 }}</td>
             <td>
               <span class="status-badge" [class.normal]="!isLowStock(product)" [class.low]="isLowStock(product)">
-                {{ isLowStock(product) ? 'Bajo' : 'Normal' }}
+                {{ isLowStock(product) ? ('Bajo' | t) : ('Normal' | t) }}
               </span>
             </td>
           </tr>
@@ -104,23 +104,23 @@
 
     <div class="loading" *ngIf="isLoading">
       <div class="spinner"></div>
-      <p>Cargando inventario...</p>
+      <p>{{ 'Cargando inventario...' | t }}</p>
     </div>
 
   <div class="modal-overlay" *ngIf="showForm" (click)="closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>Registrar Movimiento de Inventario</h2>
-        <button (click)="closeForm()" class="btn-close">&times;</button>
+        <h2>{{ 'Registrar Movimiento de Inventario' | t }}</h2>
+        <button (click)="closeForm()" class="btn-close">{{ '&times;' | t }}</button>
       </div>
 
       <form (ngSubmit)="onSubmit()">
         <div class="form-error" *ngIf="errorMessage">
-          {{ errorMessage }}
+          {{ errorMessage | t }}
         </div>
 
         <div class="form-group">
-          <label for="product_id">Producto</label>
+          <label for="product_id">{{ 'Producto' | t }}</label>
           <select
             id="product_id"
             [(ngModel)]="formData.product_id"
@@ -129,9 +129,9 @@
             class="form-control"
             [ngClass]="{'error': formErrors.product_id}"
           >
-            <option [ngValue]="null">Seleccionar producto</option>
+            <option [ngValue]="null">{{ 'Seleccionar producto' | t }}</option>
             <option *ngFor="let product of products" [ngValue]="product.id">
-              {{ product.name }} (Stock: {{ product.stock }})
+              {{ product.name }} {{ '(Stock:' | t }} {{ product.stock }})
             </option>
           </select>
           <div class="field-error" *ngIf="formErrors.product_id">
@@ -140,7 +140,7 @@
         </div>
 
         <div class="form-group">
-          <label for="type">Tipo de Movimiento</label>
+          <label for="type">{{ 'Tipo de Movimiento' | t }}</label>
           <select
             id="type"
             [(ngModel)]="formData.type"
@@ -148,13 +148,13 @@
             required
             class="form-control"
           >
-            <option value="entry">Entrada (Aumentar stock)</option>
-            <option value="exit">Salida (Reducir stock)</option>
+            <option value="entry">{{ 'Entrada (Aumentar stock)' | t }}</option>
+            <option value="exit">{{ 'Salida (Reducir stock)' | t }}</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="quantity">Cantidad</label>
+          <label for="quantity">{{ 'Cantidad' | t }}</label>
           <input
             id="quantity"
             type="number"
@@ -171,19 +171,19 @@
         </div>
 
         <div class="form-group">
-          <label for="reference">Referencia</label>
+          <label for="reference">{{ 'Referencia' | t }}</label>
           <input
             id="reference"
             type="text"
             [(ngModel)]="formData.reference"
             name="reference"
             class="form-control"
-            placeholder="Ej: Compra #123, Ajuste manual..."
+            [attr.placeholder]="'Ej: Compra #123, Ajuste manual...' | t"
           />
         </div>
 
         <div class="form-group">
-          <label for="notes">Notas</label>
+          <label for="notes">{{ 'Notas' | t }}</label>
           <textarea
             id="notes"
             [(ngModel)]="formData.notes"
@@ -194,9 +194,9 @@
         </div>
 
         <div class="form-actions">
-          <button type="button" (click)="closeForm()" class="btn-cancel">Cancelar</button>
+          <button type="button" (click)="closeForm()" class="btn-cancel">{{ 'Cancelar' | t }}</button>
           <button type="submit" class="btn-submit" [disabled]="isLoading">
-            {{ isLoading ? 'Registrando...' : 'Registrar' }}
+            {{ isLoading ? ('Registrando...' | t) : ('Registrar' | t) }}
           </button>
         </div>
       </form>

@@ -1,160 +1,443 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'" (logout)="logout()">
-  <div class="dashboard-content">
-    <div class="dashboard-header">
-      <h1>Panel de Administrador</h1>
-      <button (click)="loadDashboardData()" class="btn-refresh" title="Recargar datos">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-        </svg>
-        Recargar
-      </button>
-    </div>
+<app-layout
+  [userName]="user?.name"
+  [pageTitle]="isCashierOnly ? 'Mi Panel' : 'Panel Principal'"
+  [pageSubtitle]="isCashierOnly ? 'Resumen de tu actividad de ventas' : 'Resumen general del negocio'"
+  (logout)="logout()"
+>
 
-    @if (loading) {
+  <div header-actions class="header-actions">
+    <div class="period-selector">
+      <button
+        class="period-btn"
+        [class.active]="period === 'today'"
+        (click)="setPeriod('today')"
+      >{{ 'Hoy' | t }}</button>
+      <button
+        class="period-btn"
+        [class.active]="period === '7d'"
+        (click)="setPeriod('7d')"
+      >{{ '7 días' | t }}</button>
+      <button
+        class="period-btn"
+        [class.active]="period === '30d'"
+        (click)="setPeriod('30d')"
+      >{{ '30 días' | t }}</button>
+      <button
+        class="period-btn"
+        [class.active]="period === 'custom'"
+        (click)="setPeriod('custom')"
+      >{{ 'Personalizado' | t }}</button>
+    </div>
+    <span class="header-actions-divider"></span>
+    <button (click)="loadDashboardData()" class="btn-refresh" [attr.title]="'Recargar datos' | t">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+      </svg>
+      {{ 'Recargar' | t }}
+    </button>
+  </div>
+
+  <div class="dashboard-content">
+    @if (period === 'custom') {
+      <div class="custom-range">
+        <label>{{ 'Desde' | t }} <input appDateInput [(ngModel)]="customFrom" /></label>
+        <label>{{ 'Hasta' | t }} <input appDateInput [(ngModel)]="customTo" /></label>
+        <button class="btn-apply" (click)="applyCustomRange()" [disabled]="!customFrom || !customTo">
+          {{ 'Aplicar' | t }}
+        </button>
+      </div>
+    } @if (errorMessage) {
+      <div class="error-banner">{{ errorMessage | t }}</div>
+    } @if (loading) {
       <div class="loading-container">
         <div class="spinner"></div>
-        <p>Cargando datos...</p>
+        <p>{{ 'Cargando datos...' | t }}</p>
       </div>
     } @else {
+      <!-- Fila 1: indicadores -->
       <div class="summary-cards">
         <div class="summary-card sales">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
+          <div class="card-top">
+            <span class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </span>
+            <h3>{{ 'Ventas de hoy' | t }}</h3>
           </div>
-          <div class="card-content">
-            <h3>Total Ventas (hoy)</h3>
-            <p class="card-value">${{ totalSalesToday.toFixed(2) }}</p>
-          </div>
+          <p class="card-value">{{ formatMoney(cards?.sales_today) }}</p>
+          <p class="card-sub"><span class="card-chip">{{ cards?.invoices_today ?? 0 }}</span> {{ 'facturas hoy' | t }}</p>
         </div>
 
-        <div class="summary-card products">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-            </svg>
+        <div class="summary-card invoices">
+          <div class="card-top">
+            <span class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8"></path>
+              </svg>
+            </span>
+            <h3>{{ 'Facturas emitidas' | t }}</h3>
           </div>
-          <div class="card-content">
-            <h3>Total Productos</h3>
-            <p class="card-value">{{ totalProducts }}</p>
-          </div>
+          <p class="card-value">{{ cards?.invoices_period ?? 0 }}</p>
+          <p class="card-sub"><span class="card-chip">{{ formatMoney(cards?.sales_period) }}</span> {{ 'en el período' | t }}</p>
         </div>
 
         <div class="summary-card stock">
-          <div class="card-icon" [class.warning]="lowStockProducts > 0">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01"></path>
-            </svg>
+          <div class="card-top">
+            <span class="card-icon" [class.warning]="(cards?.low_stock_count ?? 0) + (cards?.out_of_stock_count ?? 0) > 0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01"></path>
+              </svg>
+            </span>
+            <h3>{{ 'Stock bajo' | t }}</h3>
           </div>
-          <div class="card-content">
-            <h3>Stock Bajo</h3>
-            <p class="card-value">{{ lowStockProducts }}</p>
-          </div>
+          <p class="card-value">{{ cards?.low_stock_count ?? 0 }}</p>
+          <p class="card-sub"><span class="card-chip danger">{{ cards?.out_of_stock_count ?? 0 }}</span> {{ 'agotados' | t }}</p>
         </div>
 
-        <div class="summary-card users">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
-            </svg>
+        <div class="summary-card registers">
+          <div class="card-top">
+            <span class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6zm3 0v12 M10 6v12 M16 6v12 M22 6v12"></path>
+              </svg>
+            </span>
+            <h3>{{ isCashierOnly ? ('Mi caja' | t) : ('Cajas abiertas' | t) }}</h3>
           </div>
-          <div class="card-content">
-            <h3>Usuarios Activos</h3>
-            <p class="card-value">{{ activeUsers }}</p>
-          </div>
+          <p class="card-value">{{ cards?.open_registers ?? 0 }}</p>
+          <p class="card-sub">{{ isCashierOnly ? (myRegister ? ('turno activo' | t) : ('sin turno' | t)) : ('turnos sin cerrar' | t) }}</p>
         </div>
       </div>
 
-      <div class="charts-section">
-        <div class="chart-card">
-          <h3>Ventas de los últimos 7 días</h3>
-          <div class="chart-placeholder">
-            @if (salesLast7Days.length > 0) {
-              <svg viewBox="0 0 400 200" class="bar-chart">
-                @for (sale of salesLast7Days; track sale.date; let i = $index) {
-                  <rect
-                    [attr.x]="20 + i * 55"
-                    [attr.y]="200 - (sale.total / (getMaxSales() || 1)) * 180"
-                    width="40"
-                    [attr.height]="(sale.total / (getMaxSales() || 1)) * 180"
-                    fill="#1e3a8a"
-                    rx="4"
-                  ></rect>
-                }
-              </svg>
-            } @else {
-              <p>No hay datos de ventas</p>
-            }
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <h3>Categorías más vendidas</h3>
-          <div class="chart-placeholder">
-            @if (topCategories.length > 0) {
-              <ul class="category-list">
-                @for (category of topCategories; track category.name) {
-                  <li>
-                    <span class="category-name">{{ category.name }}</span>
-                    <span class="category-count">{{ category.total_sold }} vendidos</span>
-                  </li>
-                }
-              </ul>
-            } @else {
-              <p>No hay datos de categorías</p>
-            }
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <h3>Top productos (30 días)</h3>
-          <div class="chart-placeholder">
-            @if (topProducts.length > 0) {
-              <ul class="hbar-list">
-                @for (product of topProducts.slice(0, 5); track product.name) {
-                  <li>
-                    <span class="hbar-label">{{ product.name }}</span>
-                    <div class="hbar-track">
-                      <div
-                        class="hbar-fill"
-                        [style.width.%]="(product.total_quantity / (getMaxProductQuantity() || 1)) * 100"
-                      ></div>
-                    </div>
-                    <span class="hbar-value">{{ product.total_quantity }}</span>
-                  </li>
-                }
-              </ul>
-            } @else {
-              <p>No hay datos de productos</p>
-            }
-          </div>
-        </div>
-
-        <div class="chart-card">
-          <h3>Ventas por método de pago</h3>
-          <div class="chart-placeholder donut-chart">
-            @if (salesByPayment.length > 0) {
-              <div class="donut" [style.background]="paymentDonutGradient">
-                <div class="donut-hole">
-                  <span>${{ paymentTotal.toFixed(2) }}</span>
+      <!-- Panel del cajero: estado de su caja y acceso rápido al POS -->
+      @if (isCashierOnly) {
+        <div class="cashier-panel">
+          @if (myRegister) {
+            <div class="register-status">
+              <div class="register-info">
+                <h3>{{ myRegister.name }}</h3>
+                <p>{{ 'Abierta · Fondo inicial' | t }} {{ formatMoney(myRegister.opening_balance) }}</p>
+              </div>
+              <div class="register-figures">
+                <div class="register-figure">
+                  <span>{{ 'Efectivo' | t }}</span>
+                  <strong>{{ formatMoney(myRegister.cash_sales) }}</strong>
+                </div>
+                <div class="register-figure">
+                  <span>{{ 'Tarjeta' | t }}</span>
+                  <strong>{{ formatMoney(myRegister.card_sales) }}</strong>
+                </div>
+                <div class="register-figure">
+                  <span>{{ 'Transferencia' | t }}</span>
+                  <strong>{{ formatMoney(myRegister.transfer_sales) }}</strong>
+                </div>
+                <div class="register-figure total">
+                  <span>{{ 'Total vendido' | t }}</span>
+                  <strong>{{ formatMoney(myRegister.total_sales) }}</strong>
                 </div>
               </div>
-              <ul class="donut-legend">
-                @for (item of salesByPayment; track item.payment_method) {
-                  <li>
-                    <span class="legend-dot" [style.background]="getPaymentColor(item.payment_method)"></span>
-                    {{ getPaymentLabel(item.payment_method) }}:
-                    ${{ item.total_revenue.toFixed(2) }} ({{ item.total_transactions }})
-                  </li>
+            </div>
+          } @else {
+            <div class="register-status empty">
+              <p>{{ 'No tienes una caja abierta en este momento.' | t }}</p>
+            </div>
+          } @if (canViewPos) {
+            <a routerLink="/pos" class="btn-pos">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path>
+              </svg>
+              {{ 'Ir a Facturación' | t }}
+            </a>
+          }
+        </div>
+      }
+
+      <!-- Fila 2: métodos de pago (anillos) + ventas por día (barras) -->
+      <div class="dash-row row-feature">
+        <div class="chart-card">
+          <h3>{{ 'Ventas por método de pago' | t }}</h3>
+          @if (paymentMethods.length > 0 && paymentTotal > 0) {
+            <div class="rings-wrap">
+              <svg viewBox="0 0 160 160" class="rings" role="img" [attr.aria-label]="'Ventas por método de pago' | t">
+                @for (ring of paymentRings; track ring.method) {
+                  <circle cx="80" cy="80" [attr.r]="ring.r" class="ring-track" [attr.stroke-dasharray]="ring.track" transform="rotate(135 80 80)" />
+                  <circle cx="80" cy="80" [attr.r]="ring.r" class="ring-arc" [attr.stroke]="ring.color" [attr.stroke-dasharray]="ring.arc" transform="rotate(135 80 80)" />
                 }
-              </ul>
-            } @else {
-              <p>No hay datos de métodos de pago</p>
+              </svg>
+              <div class="rings-center">
+                <strong>{{ formatCompact(paymentTotal) }}</strong>
+                <span>{{ 'Total' | t }}</span>
+              </div>
+            </div>
+            <ul class="ring-legend">
+              @for (item of paymentMethods; track item.payment_method) {
+                <li>
+                  <span class="legend-dot" [style.background]="getPaymentColor(item.payment_method)"></span>
+                  <span class="legend-name">{{ getPaymentLabel(item.payment_method) | t }}</span>
+                  <span class="legend-value">{{ item.percentage }}%</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <div class="chart-placeholder"><p>{{ 'Sin cobros en el período' | t }}</p></div>
+          }
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <div>
+              <h3>{{ 'Ventas por día' | t }}</h3>
+              <p class="chart-total">
+                {{ formatMoney(salesChart?.total) }}
+                <span class="card-chip">{{ salesChart?.invoices ?? 0 }} {{ 'facturas' | t }}</span>
+              </p>
+              @if (salesChart?.previous) {
+                <p class="chart-subtitle">{{ 'anterior' | t }} {{ formatMoney(salesChart?.previous?.total) }}</p>
+              }
+            </div>
+            <div class="chart-head-side">
+              <div class="chart-legend">
+                <span><i class="dot current"></i> {{ 'Período actual' | t }}</span>
+                @if (salesChart?.previous) {
+                  <span><i class="dot previous"></i> {{ 'Período anterior' | t }}</span>
+                }
+              </div>
+              <label class="compare-toggle">
+                <input type="checkbox" [checked]="compareEnabled" (change)="toggleCompare()" />
+                {{ 'Comparar período anterior' | t }}
+              </label>
+            </div>
+          </div>
+          @if (chartLoading) {
+            <div class="chart-placeholder"><div class="spinner small"></div></div>
+          } @else if (series.length > 0) {
+            <svg [attr.viewBox]="'0 0 ' + chartW + ' ' + chartH" class="bar-chart" role="img" [attr.aria-label]="'Ventas por día' | t">
+              <defs>
+                <linearGradient id="salesBar" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#E91E83" />
+                  <stop offset="100%" stop-color="#6B21A8" />
+                </linearGradient>
+              </defs>
+
+              @for (tick of yTicks; track tick.y) {
+                <line [attr.x1]="padL" [attr.x2]="chartW - padR" [attr.y1]="tick.y" [attr.y2]="tick.y" class="grid-line" />
+                <text [attr.x]="padL - 8" [attr.y]="tick.y + 4" class="axis-label" text-anchor="end">{{ tick.label }}</text>
+              }
+
+              @for (bar of bars; track bar.p.date) {
+                @if (bar.prev) {
+                  <rect [attr.x]="bar.prev.x" [attr.y]="bar.prev.y" [attr.width]="bar.w" [attr.height]="bar.prev.h" rx="3" class="bar-previous">
+                    <title>{{ 'Período anterior' | t }} — {{ formatMoney(bar.prev.total) }}</title>
+                  </rect>
+                }
+                <rect [attr.x]="bar.x" [attr.y]="bar.y" [attr.width]="bar.w" [attr.height]="bar.h" rx="3" fill="url(#salesBar)" class="bar-current">
+                  <title>{{ bar.p.date }} — {{ formatMoney(bar.p.total) }} ({{ bar.p.invoices }} {{ 'facturas' | t }})</title>
+                </rect>
+              }
+
+              @for (lbl of xLabels; track lbl.x) {
+                <text [attr.x]="lbl.x" [attr.y]="chartH - 6" class="axis-label" text-anchor="middle">{{ lbl.label }}</text>
+              }
+            </svg>
+          } @else {
+            <div class="chart-placeholder"><p>{{ 'No hay ventas registradas en el período' | t }}</p></div>
+          }
+        </div>
+      </div>
+
+      <!-- Fila 3: productos, cajeros e inventario -->
+      <div class="dash-row row-triple">
+        <div class="chart-card">
+          <div class="chart-head">
+            <h3>{{ 'Productos más vendidos' | t }}</h3>
+            <div class="mini-toggles">
+              <button class="mini-btn" [class.active]="topMetric === 'quantity'" (click)="setTopMetric('quantity')">{{ 'Unidades' | t }}</button>
+              <button class="mini-btn" [class.active]="topMetric === 'revenue'" (click)="setTopMetric('revenue')">{{ 'Ingresos' | t }}</button>
+              <button class="mini-btn" [class.active]="topLimit === 5" (click)="setTopLimit(5)">5</button>
+              <button class="mini-btn" [class.active]="topLimit === 10" (click)="setTopLimit(10)">10</button>
+            </div>
+          </div>
+          @if (topProducts.length > 0) {
+            <div class="list-head">
+              <span>{{ 'Producto' | t }}</span>
+              <span>{{ topMetric === 'revenue' ? ('Ingresos' | t) : ('Unidades' | t) }}</span>
+            </div>
+            <ul class="product-list">
+              @for (item of topProducts; track item.product?.id || $index) {
+                <li>
+                  <span class="rank">{{ $index + 1 }}</span>
+                  <div class="product-info">
+                    <span class="product-name" [title]="item.product?.name">{{ item.product?.name || ('Sin nombre' | t) }}</span>
+                    <div class="hbar-track"><div class="hbar-fill" [style.width.%]="topBarWidth(item)"></div></div>
+                  </div>
+                  <span class="product-value">{{ topValueLabel(item) | t }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <div class="chart-placeholder"><p>{{ 'Sin productos vendidos en el período' | t }}</p></div>
+          }
+        </div>
+
+        @if (showCashierChart) {
+          <div class="chart-card">
+            <h3>{{ 'Ventas por cajero' | t }}</h3>
+            <ul class="people-list">
+              @for (c of cashiers; track c.user_id) {
+                <li>
+                  <span class="person-avatar">{{ c.name.charAt(0) }}</span>
+                  <div class="person-info">
+                    <span class="person-name" [title]="c.name">{{ c.name }}</span>
+                    <span class="person-meta">{{ formatMoney(c.total) }} · {{ c.invoices }} {{ 'facturas' | t }}</span>
+                  </div>
+                  <span class="person-share">{{ cashierShare(c.total) }}%</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (canViewInventory && inventory) {
+          <div class="chart-card gauge-card">
+            <h3>{{ 'Estado del inventario' | t }}</h3>
+            <div class="gauge-wrap">
+              <svg viewBox="0 0 200 112" class="gauge" role="img" [attr.aria-label]="'Estado del inventario' | t">
+                <path [attr.d]="gaugePath" class="gauge-track" pathLength="100" />
+                @for (seg of inventoryGaugeSegments; track seg.part) {
+                  <path [attr.d]="gaugePath" pathLength="100" [attr.class]="'gauge-seg ' + seg.part"
+                        [attr.stroke-dasharray]="seg.dash" [attr.stroke-dashoffset]="seg.offset" />
+                }
+              </svg>
+              <div class="gauge-center">
+                <strong>{{ inventoryPercent('normal') | number: '1.0-0' }}%</strong>
+                <span>{{ 'Stock normal' | t }}</span>
+              </div>
+            </div>
+            <ul class="gauge-legend">
+              <li><a routerLink="/products"><i class="dot normal"></i> {{ 'Normal' | t }}</a><strong>{{ inventory.summary.normal }}</strong></li>
+              <li><a routerLink="/products"><i class="dot low"></i> {{ 'Bajo' | t }}</a><strong>{{ inventory.summary.low_stock }}</strong></li>
+              <li><a routerLink="/products"><i class="dot out"></i> {{ 'Agotados' | t }}</a><strong>{{ inventory.summary.out_of_stock }}</strong></li>
+            </ul>
+          </div>
+        }
+      </div>
+
+      <!-- Fila 4: ventas por hora -->
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>{{ 'Ventas por hora' | t }}</h3>
+          @if (peakHour !== null && maxHourTotal > 0) {
+            <span class="peak-chip">{{ 'Hora pico:' | t }} {{ formatHour(peakHour!) }}</span>
+          }
+        </div>
+        @if (hoursData && maxHourTotal > 0) {
+          <div class="hour-chart">
+            @for (h of hoursData.hours; track h.hour) {
+              <div class="hour-col" [title]="formatHour(h.hour) + ' — ' + formatMoney(h.total) + ' (' + h.invoices + ' facturas)'">
+                <div class="hour-bar"
+                     [class.peak]="h.hour === peakHour && h.total > 0"
+                     [style.height.%]="(h.total / maxHourTotal) * 100"></div>
+                <span class="hour-label">{{ h.hour % 3 === 0 ? formatHour(h.hour) : '' }}</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="chart-placeholder"><p>{{ 'Sin actividad en el período' | t }}</p></div>
+        }
+      </div>
+
+      <!-- Alertas y notificaciones -->
+      @if (alerts && alertCount > 0) {
+        <div class="alerts-panel">
+          <div class="alerts-header">
+            <h3>{{ 'Alertas y notificaciones' | t }}</h3>
+            <span class="alert-badge">{{ alertCount }}</span>
+          </div>
+          <div class="alerts-grid">
+            @if (canViewInventory && alerts.out_of_stock.length > 0) {
+              <div class="alert-group danger">
+                <h4>{{ 'Productos agotados' | t }}</h4>
+                <ul>
+                  @for (p of alerts.out_of_stock.slice(0, 5); track p.id) {
+                    <li>
+                      <a routerLink="/products">{{ p.name }}</a>
+                      <span class="alert-meta">{{ 'SKU' | t }} {{ p.sku }}</span>
+                    </li>
+                  }
+                </ul>
+                @if (alerts.out_of_stock.length > 5) {
+                  <a routerLink="/products" class="alert-more">{{ 'Ver todos (' | t }}{{ alerts.out_of_stock.length }})</a>
+                }
+              </div>
+            } @if (canViewInventory && alerts.low_stock.length > 0) {
+              <div class="alert-group warning">
+                <h4>{{ 'Stock por debajo del mínimo' | t }}</h4>
+                <ul>
+                  @for (p of alerts.low_stock.slice(0, 5); track p.id) {
+                    <li>
+                      <a routerLink="/products">{{ p.name }}</a>
+                      <span class="alert-meta">{{ p.stock }}/{{ p.min_stock }} {{ 'uds' | t }}</span>
+                    </li>
+                  }
+                </ul>
+                @if (alerts.low_stock.length > 5) {
+                  <a routerLink="/products" class="alert-more">{{ 'Ver todos (' | t }}{{ alerts.low_stock.length }})</a>
+                }
+              </div>
+            } @if (canViewInventory && alerts.expired.length > 0) {
+              <div class="alert-group danger">
+                <h4>{{ 'Productos vencidos' | t }}</h4>
+                <ul>
+                  @for (p of alerts.expired.slice(0, 5); track p.id) {
+                    <li>
+                      <a routerLink="/products">{{ p.name }}</a>
+                      <span class="alert-meta">{{ 'venció hace' | t }} {{ p.days_expired }} {{ 'días' | t }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            } @if (canViewInventory && alerts.expiring_soon.length > 0) {
+              <div class="alert-group warning">
+                <h4>{{ 'Próximos a vencer' | t }}</h4>
+                <ul>
+                  @for (p of alerts.expiring_soon.slice(0, 5); track p.id) {
+                    <li>
+                      <a routerLink="/products">{{ p.name }}</a>
+                      <span class="alert-meta">{{ 'vence en' | t }} {{ p.days_left }} {{ 'días' | t }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            } @if (alerts.open_registers.length > 0) {
+              <div class="alert-group info">
+                <h4>{{ isCashierOnly ? ('Tu caja abierta' | t) : ('Cajas abiertas' | t) }}</h4>
+                <ul>
+                  @for (r of alerts.open_registers.slice(0, 5); track r.id) {
+                    <li>
+                      <a routerLink="/cash-registers">{{ r.name }}</a>
+                      <span class="alert-meta">{{ r.user }} · {{ formatMoney(r.total_sales) }}</span>
+                    </li>
+                  }
+                </ul>
+              </div>
+            } @if (alerts.can_view_discrepancies && alerts.discrepancies.length > 0) {
+              <div class="alert-group danger">
+                <h4>{{ 'Diferencias de caja pendientes' | t }}</h4>
+                <ul>
+                  @for (d of alerts.discrepancies.slice(0, 5); track d.id) {
+                    <li>
+                      <a routerLink="/cash-registers">{{ d.name }}</a>
+                      <span class="alert-meta" [class.negative]="d.difference < 0">
+                        {{ d.difference > 0 ? '+' : '' }}{{ formatMoney(d.difference) }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+              </div>
             }
           </div>
         </div>
-      </div>
+      }
     }
   </div>
 </app-layout>

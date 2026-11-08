@@ -8,6 +8,9 @@ import { CategoryService } from '../services/category';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { DateInput } from '../directives/date-input';
+import { APP_PIPES } from '../pipes';
 
 interface Category {
   id: number;
@@ -26,6 +29,7 @@ interface Product {
   stock: number;
   min_stock: number;
   max_stock: number;
+  expiry_date: string | null;
   category_id: number;
   category: Category;
   barcode: string;
@@ -34,7 +38,7 @@ interface Product {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, DateInput, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-products',
   styleUrl: './products.css',
   templateUrl: './products.html',
@@ -61,6 +65,7 @@ export class Products implements OnInit, OnDestroy {
     stock: 0,
     min_stock: 0,
     max_stock: null as number | null,
+    expiry_date: '',
     category_id: null as number | null,
     barcode: '',
     image: '',
@@ -68,6 +73,8 @@ export class Products implements OnInit, OnDestroy {
   };
 
   formErrors: any = {};
+  selectedImageFile: File | null = null;
+  imagePreview: string | null = null;
 
   constructor(
     private productService: ProductService,
@@ -110,6 +117,10 @@ export class Products implements OnInit, OnDestroy {
     this.productService.getProducts(params).subscribe({
       next: (response) => {
         console.log('Products loaded:', response);
+        if (!response.data?.length && page > 1 && response.meta?.last_page < page) {
+          this.loadProducts(response.meta.last_page);
+          return;
+        }
         this.products = response.data || [];
         this.meta = response.meta;
         this.isLoading = false;
@@ -178,6 +189,8 @@ export class Products implements OnInit, OnDestroy {
     this.selectedProduct = null;
     this.formErrors = {};
     this.errorMessage = '';
+    this.selectedImageFile = null;
+    this.imagePreview = null;
     this.formData = {
       name: '',
       sku: '',
@@ -187,6 +200,7 @@ export class Products implements OnInit, OnDestroy {
       stock: 0,
       min_stock: 0,
       max_stock: null,
+      expiry_date: '',
       category_id: null,
       barcode: '',
       image: '',
@@ -200,6 +214,8 @@ export class Products implements OnInit, OnDestroy {
     this.selectedProduct = product;
     this.formErrors = {};
     this.errorMessage = '';
+    this.selectedImageFile = null;
+    this.imagePreview = product.image || null;
     this.formData = {
       name: product.name,
       sku: product.sku,
@@ -209,6 +225,7 @@ export class Products implements OnInit, OnDestroy {
       stock: product.stock,
       min_stock: product.min_stock,
       max_stock: product.max_stock || null,
+      expiry_date: product.expiry_date || '',
       category_id: product.category_id || null,
       barcode: product.barcode,
       image: product.image,
@@ -219,6 +236,38 @@ export class Products implements OnInit, OnDestroy {
   closeForm(): void {
     this.showForm = false;
     this.selectedProduct = null;
+  }
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedImageFile = input.files[0];
+      this.imagePreview = URL.createObjectURL(this.selectedImageFile);
+      this.cdr.detectChanges();
+    }
+  }
+
+  private buildFormData(): FormData {
+    const data = new FormData();
+    data.append('name', this.formData.name);
+    data.append('sku', this.formData.sku);
+    data.append('description', this.formData.description || '');
+    data.append('price', String(this.formData.price));
+    data.append('cost', this.formData.cost !== null ? String(this.formData.cost) : '');
+    data.append('stock', String(this.formData.stock));
+    data.append('min_stock', String(this.formData.min_stock));
+    if (this.formData.max_stock !== null) {
+      data.append('max_stock', String(this.formData.max_stock));
+    }
+    data.append('expiry_date', this.formData.expiry_date || '');
+    data.append('category_id', String(this.formData.category_id));
+    data.append('barcode', this.formData.barcode || '');
+    data.append('image', this.formData.image || '');
+    data.append('is_active', this.formData.is_active ? '1' : '0');
+    if (this.selectedImageFile) {
+      data.append('image_file', this.selectedImageFile);
+    }
+    return data;
   }
 
   onSubmit(): void {
@@ -234,7 +283,7 @@ export class Products implements OnInit, OnDestroy {
     this.formErrors = {};
     this.errorMessage = '';
 
-    this.productService.createProduct(this.formData).subscribe({
+    this.productService.createProductFormData(this.buildFormData()).subscribe({
       next: () => {
         this.loadProducts();
         this.closeForm();
@@ -259,9 +308,9 @@ export class Products implements OnInit, OnDestroy {
     this.formErrors = {};
     this.errorMessage = '';
 
-    this.productService.updateProduct(this.selectedProduct.id, this.formData).subscribe({
+    this.productService.updateProductFormData(this.selectedProduct.id, this.buildFormData()).subscribe({
       next: () => {
-        this.loadProducts();
+        this.loadProducts(this.meta.current_page);
         this.closeForm();
         this.isLoading = false;
       },
@@ -282,7 +331,7 @@ export class Products implements OnInit, OnDestroy {
       this.isLoading = true;
       this.productService.deleteProduct(product.id).subscribe({
         next: () => {
-          this.loadProducts();
+          this.loadProducts(this.meta.current_page);
           this.isLoading = false;
         },
         error: (error) => {

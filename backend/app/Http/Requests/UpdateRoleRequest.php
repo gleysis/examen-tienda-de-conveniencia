@@ -13,7 +13,11 @@ class UpdateRoleRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $role = $this->route('role');
+        $changesSystemSlug = $role->isSystemRole() && $this->has('slug') && $this->input('slug') !== $role->slug;
+
+        return ! $changesSystemSlug
+            && $this->user()->holdsAllPermissions($role->permissions()->pluck('slug'));
     }
 
     /**

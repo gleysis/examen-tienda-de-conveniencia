@@ -6,21 +6,14 @@
 
 .categories-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   margin-bottom: 2rem;
 }
 
-.categories-header h1 {
-  color: #333;
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-}
-
 .btn-create {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   color: white;
   border: none;
   border-radius: 6px;
@@ -31,12 +24,12 @@
 
 .btn-create:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .error-message {
-  background: #fff5f5;
-  border: 1px solid #feb2b2;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--tint-feb2b2);
   border-radius: 6px;
   padding: 1rem;
   margin-bottom: 1rem;
@@ -44,7 +37,7 @@
 }
 
 .categories-table-container {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -53,7 +46,7 @@
 .no-categories {
   padding: 3rem;
   text-align: center;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 1.1rem;
 }
 
@@ -63,24 +56,24 @@
 }
 
 .categories-table thead {
-  background: #f8f9fa;
+  background: var(--color-surface-muted);
 }
 
 .categories-table th {
   padding: 1rem;
   text-align: left;
   font-weight: 600;
-  color: #333;
-  border-bottom: 2px solid #e9ecef;
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-border);
 }
 
 .categories-table td {
   padding: 1rem;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .categories-table tbody tr:hover {
-  background: #f8f9fa;
+  background: var(--color-surface-muted);
 }
 
 .status-badge {
@@ -92,19 +85,19 @@
 }
 
 .status-badge.active {
-  background: #d4edda;
-  color: #155724;
+  background: var(--tint-d4edda);
+  color: var(--ink-155724);
 }
 
 .status-badge.inactive {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--tint-f8d7da);
+  color: var(--ink-721c24);
 }
 
 .btn-edit {
   padding: 0.5rem 1rem;
   background: #ffc107;
-  color: #333;
+  color: var(--color-text);
   border: none;
   border-radius: 4px;
   font-weight: 500;
@@ -133,7 +126,7 @@
 .loading {
   text-align: center;
   padding: 2rem;
-  color: #666;
+  color: var(--color-text-muted);
   font-size: 1.1rem;
 }
 
@@ -151,7 +144,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: var(--color-surface);
   border-radius: 12px;
   padding: 2rem;
   width: 100%;
@@ -168,7 +161,7 @@
 }
 
 .modal-header h2 {
-  color: #333;
+  color: var(--color-text);
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0;
@@ -179,12 +172,12 @@
   border: none;
   font-size: 2rem;
   cursor: pointer;
-  color: #666;
+  color: var(--color-text-muted);
   line-height: 1;
 }
 
 .btn-close:hover {
-  color: #333;
+  color: var(--color-text);
 }
 
 .form-group {
@@ -193,7 +186,7 @@
 
 .form-group label {
   display: block;
-  color: #333;
+  color: var(--color-text);
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
@@ -201,7 +194,7 @@
 .form-control {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 1rem;
   box-sizing: border-box;
@@ -210,17 +203,17 @@
 
 .form-control:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--color-primary);
 }
 
 .form-control.error {
   border-color: #e53e3e;
-  background-color: #fff5f5;
+  background-color: var(--color-surface-muted);
 }
 
 .form-error {
-  background: #fff5f5;
-  border: 1px solid #feb2b2;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--tint-feb2b2);
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 1rem;
@@ -262,7 +255,7 @@
 .btn-submit {
   flex: 1;
   padding: 0.75rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   color: white;
   border: none;
   border-radius: 6px;
@@ -272,7 +265,7 @@
 
 .btn-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .btn-submit:disabled {

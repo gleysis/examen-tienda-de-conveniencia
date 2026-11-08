@@ -78,7 +78,7 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'es'),
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
@@ -121,6 +121,21 @@ return [
     'maintenance' => [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Administrator
+    |--------------------------------------------------------------------------
+    |
+    | Credentials used by AdminUserSeeder. When no password is configured a
+    | random one is generated and printed once, so no default password exists.
+    |
+    */
+
+    'admin' => [
+        'email' => env('ADMIN_EMAIL', 'admin@pos.com'),
+        'password' => env('ADMIN_PASSWORD'),
     ],
 
 ];

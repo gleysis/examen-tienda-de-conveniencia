@@ -74,8 +74,11 @@ class UserController extends Controller
         ];
     }
 
-    public function destroy(User $user): array
+    public function destroy(Request $request, User $user): array
     {
+        abort_if($request->user()->is($user), 422, 'No puedes eliminar tu propio usuario.');
+        abort_unless($request->user()->holdsAllPermissions($user->permissionSlugs()), 403);
+
         $user->delete();
 
         return [

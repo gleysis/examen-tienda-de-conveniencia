@@ -1,27 +1,27 @@
+<app-layout [userName]="user?.name" (logout)="logout()">
 <div class="categories-container">
   <div class="categories-header">
-    <h1>Gestión de Categorías</h1>
-    <button (click)="openCreateForm()" class="btn-create">
-      <span>+</span> Nueva Categoría
+    <button (click)="openCreateForm()" class="btn-create" *appHasPermission="'categories.create'">
+      <span>+</span> {{ 'Nueva Categoría' | t }}
     </button>
   </div>
 
   <div class="error-message" *ngIf="errorMessage">
-    {{ errorMessage }}
+    {{ errorMessage | t }}
   </div>
 
   <div class="categories-table-container" *ngIf="!isLoading">
     <div class="no-categories" *ngIf="categories.length === 0">
-      No hay categorías registradas. Crea la primera haciendo clic en "Nueva Categoría".
+      {{ 'No hay categorías registradas. Crea la primera haciendo clic en "Nueva Categoría".' | t }}
     </div>
     <table class="categories-table" *ngIf="categories.length > 0">
       <thead>
         <tr>
-          <th>Nombre</th>
-          <th>Slug</th>
-          <th>Descripción</th>
-          <th>Estado</th>
-          <th>Acciones</th>
+          <th>{{ 'Nombre' | t }}</th>
+          <th>{{ 'Slug' | t }}</th>
+          <th>{{ 'Descripción' | t }}</th>
+          <th>{{ 'Estado' | t }}</th>
+          <th>{{ 'Acciones' | t }}</th>
         </tr>
       </thead>
       <tbody>
@@ -31,12 +31,12 @@
           <td>{{ category.description || '-' }}</td>
           <td>
             <span class="status-badge" [class.active]="category.is_active" [class.inactive]="!category.is_active">
-              {{ category.is_active ? 'Activo' : 'Inactivo' }}
+              {{ category.is_active ? ('Activo' | t) : ('Inactivo' | t) }}
             </span>
           </td>
           <td>
-            <button (click)="openEditForm(category)" class="btn-edit">Editar</button>
-            <button (click)="deleteCategory(category)" class="btn-delete">Eliminar</button>
+            <button (click)="openEditForm(category)" class="btn-edit" *appHasPermission="'categories.edit'">{{ 'Editar' | t }}</button>
+            <button (click)="deleteCategory(category)" class="btn-delete" *appHasPermission="'categories.delete'">{{ 'Eliminar' | t }}</button>
           </td>
         </tr>
       </tbody>
@@ -44,23 +44,23 @@
   </div>
 
   <div class="loading" *ngIf="isLoading">
-    Cargando...
+    {{ 'Cargando...' | t }}
   </div>
 
   <div class="modal-overlay" *ngIf="showForm" (click)="closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>{{ isEditing ? 'Editar Categoría' : 'Nueva Categoría' }}</h2>
-        <button (click)="closeForm()" class="btn-close">&times;</button>
+        <h2>{{ isEditing ? ('Editar Categoría' | t) : ('Nueva Categoría' | t) }}</h2>
+        <button (click)="closeForm()" class="btn-close">{{ '&times;' | t }}</button>
       </div>
 
       <form (ngSubmit)="onSubmit()">
         <div class="form-error" *ngIf="errorMessage">
-          {{ errorMessage }}
+          {{ errorMessage | t }}
         </div>
 
         <div class="form-group">
-          <label for="name">Nombre</label>
+          <label for="name">{{ 'Nombre' | t }}</label>
           <input
             id="name"
             type="text"
@@ -77,7 +77,7 @@
         </div>
 
         <div class="form-group">
-          <label for="slug">Slug</label>
+          <label for="slug">{{ 'Slug' | t }}</label>
           <input
             id="slug"
             type="text"
@@ -93,7 +93,7 @@
         </div>
 
         <div class="form-group">
-          <label for="description">Descripción</label>
+          <label for="description">{{ 'Descripción' | t }}</label>
           <textarea
             id="description"
             [(ngModel)]="formData.description"
@@ -106,17 +106,18 @@
         <div class="form-group">
           <label>
             <input type="checkbox" [(ngModel)]="formData.is_active" name="is_active" />
-            Activo
+            {{ 'Activo' | t }}
           </label>
         </div>
 
         <div class="form-actions">
-          <button type="button" (click)="closeForm()" class="btn-cancel">Cancelar</button>
+          <button type="button" (click)="closeForm()" class="btn-cancel">{{ 'Cancelar' | t }}</button>
           <button type="submit" class="btn-submit" [disabled]="isLoading">
-            {{ isLoading ? 'Guardando...' : (isEditing ? 'Actualizar' : 'Crear') }}
+            {{ isLoading ? ('Guardando...' | t) : (isEditing ? ('Actualizar' | t) : ('Crear' | t)) }}
           </button>
         </div>
       </form>
     </div>
   </div>
 </div>
+</app-layout>

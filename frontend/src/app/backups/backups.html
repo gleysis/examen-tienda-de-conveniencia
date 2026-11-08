@@ -1,49 +1,48 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'">
+<app-layout [userName]="user?.name" pageTitle="Respaldo de Base de Datos">
   <div class="backups-container">
     <div class="backups-header">
-      <h2>Respaldo de Base de Datos</h2>
       <button (click)="createBackup()" class="btn-create" [disabled]="isCreating">
-        {{ isCreating ? 'Creando...' : 'Crear Respaldo' }}
+        {{ isCreating ? ('Creando...' | t) : ('Crear Respaldo' | t) }}
       </button>
     </div>
 
     <div *ngIf="errorMessage" class="error-message">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
     <div class="restore-card">
-      <h3>Restaurar desde archivo</h3>
+      <h3>{{ 'Restaurar desde archivo' | t }}</h3>
       <div class="restore-controls">
-        <input type="file" accept=".sql" (change)="onFileSelected($event)" />
+        <input #fileInput type="file" accept=".sql" (change)="onFileSelected($event)" />
         <button
           class="btn-restore"
-          (click)="restore()"
+          (click)="restore(fileInput)"
           [disabled]="!selectedFile || isRestoring"
         >
-          {{ isRestoring ? 'Restaurando...' : 'Restaurar' }}
+          {{ isRestoring ? ('Restaurando...' | t) : ('Restaurar' | t) }}
         </button>
       </div>
       <p class="restore-warning">
-        La restauración reemplaza todos los datos actuales. Se recomienda crear un respaldo antes.
+        {{ 'La restauración reemplaza todos los datos actuales. Antes de restaurar se guarda automáticamente una copia del estado actual.' | t }}
       </p>
     </div>
 
     <div *ngIf="isLoading" class="loading">
       <div class="spinner"></div>
-      <p>Cargando respaldos...</p>
+      <p>{{ 'Cargando respaldos...' | t }}</p>
     </div>
 
     <div *ngIf="!isLoading" class="backups-table-container">
       <div class="no-backups" *ngIf="backups.length === 0">
-        <p>No hay respaldos creados</p>
+        <p>{{ 'No hay respaldos creados' | t }}</p>
       </div>
       <table class="backups-table" *ngIf="backups.length > 0">
         <thead>
           <tr>
-            <th>Archivo</th>
-            <th>Fecha</th>
-            <th>Tamaño</th>
-            <th>Acciones</th>
+            <th>{{ 'Archivo' | t }}</th>
+            <th>{{ 'Fecha' | t }}</th>
+            <th>{{ 'Tamaño' | t }}</th>
+            <th>{{ 'Acciones' | t }}</th>
           </tr>
         </thead>
         <tbody>
@@ -52,8 +51,9 @@
             <td>{{ backup.created_at }}</td>
             <td>{{ formatSize(backup.size) }}</td>
             <td>
-              <button class="btn-action" (click)="download(backup)">Descargar</button>
-              <button class="btn-action btn-danger" (click)="delete(backup)">Eliminar</button>
+              <button class="btn-action" (click)="restoreStored(backup)" [disabled]="isRestoring">{{ 'Restaurar' | t }}</button>
+              <button class="btn-action" (click)="download(backup)">{{ 'Descargar' | t }}</button>
+              <button class="btn-action btn-danger" (click)="delete(backup)">{{ 'Eliminar' | t }}</button>
             </td>
           </tr>
         </tbody>

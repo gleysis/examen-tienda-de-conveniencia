@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { RoleService, Role, Permission } from '../services/role';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-roles',
   styleUrl: './roles.css',
   templateUrl: './roles.html',

@@ -26,15 +26,15 @@ class CashRegister extends Model
     ];
 
     protected $casts = [
-        'opening_balance' => 'decimal:2',
-        'current_balance' => 'decimal:2',
-        'cash_sales' => 'decimal:2',
-        'card_sales' => 'decimal:2',
-        'transfer_sales' => 'decimal:2',
-        'total_sales' => 'decimal:2',
-        'expected_closing' => 'decimal:2',
-        'actual_closing' => 'decimal:2',
-        'difference' => 'decimal:2',
+        'opening_balance' => 'float',
+        'current_balance' => 'float',
+        'cash_sales' => 'float',
+        'card_sales' => 'float',
+        'transfer_sales' => 'float',
+        'total_sales' => 'float',
+        'expected_closing' => 'float',
+        'actual_closing' => 'float',
+        'difference' => 'float',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
@@ -47,6 +47,11 @@ class CashRegister extends Model
     public function sales()
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function movements()
+    {
+        return $this->hasMany(CashMovement::class);
     }
 
     public function scopeOpen($query)
@@ -103,6 +108,21 @@ class CashRegister extends Model
                 break;
         }
 
-        $this->update(['expected_closing' => $this->opening_balance + $this->cash_sales]);
+        $this->update(['expected_closing' => $this->computedExpectedClosing()]);
+    }
+
+    public function addMovement(string $type, float $amount): void
+    {
+        $delta = $type === CashMovement::TYPE_INCOME ? $amount : -$amount;
+        $this->increment('current_balance', $delta);
+        $this->update(['expected_closing' => $this->computedExpectedClosing()]);
+    }
+
+    public function computedExpectedClosing(): float
+    {
+        $cashIn = (float) $this->movements()->where('type', CashMovement::TYPE_INCOME)->sum('amount');
+        $cashOut = (float) $this->movements()->whereIn('type', [CashMovement::TYPE_WITHDRAWAL, CashMovement::TYPE_EXPENSE])->sum('amount');
+
+        return $this->opening_balance + $this->cash_sales + $cashIn - $cashOut;
     }
 }

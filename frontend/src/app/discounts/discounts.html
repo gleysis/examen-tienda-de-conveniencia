@@ -1,4 +1,4 @@
-<app-layout [userName]="user?.name" [userRole]="'admin'">
+<app-layout [userName]="user?.name">
   <div class="discounts-container">
     <div class="discounts-header">
       <div class="search-bar">
@@ -6,25 +6,25 @@
           type="text"
           [(ngModel)]="searchQuery"
           (keyup.enter)="onSearch()"
-          placeholder="Buscar por código o nombre..."
+          [attr.placeholder]="'Buscar por código o nombre...' | t"
           class="search-input"
         />
       </div>
-      <button (click)="showAddForm()" class="btn-create">
+      <button (click)="showAddForm()" class="btn-create" *appHasPermission="'discounts.create'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14 M5 12h14"></path>
         </svg>
-        Nuevo Descuento
+        {{ 'Nuevo Descuento' | t }}
       </button>
     </div>
 
     <div *ngIf="errorMessage" class="error-message">
-      {{ errorMessage }}
+      {{ errorMessage | t }}
     </div>
 
     <div *ngIf="isLoading" class="loading">
       <div class="spinner"></div>
-      <p>Cargando descuentos...</p>
+      <p>{{ 'Cargando descuentos...' | t }}</p>
     </div>
 
     <div *ngIf="!isLoading" class="discounts-table-container">
@@ -32,48 +32,48 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
         </svg>
-        <p>No hay descuentos registrados</p>
+        <p>{{ 'No hay descuentos registrados' | t }}</p>
       </div>
       <table class="discounts-table" *ngIf="discounts.length > 0">
         <thead>
           <tr>
-            <th>Código</th>
-            <th>Nombre</th>
-            <th>Tipo</th>
-            <th>Valor</th>
-            <th>Aplica a</th>
-            <th>Usos</th>
-            <th>Vigencia</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th>{{ 'Código' | t }}</th>
+            <th>{{ 'Nombre' | t }}</th>
+            <th>{{ 'Tipo' | t }}</th>
+            <th>{{ 'Valor' | t }}</th>
+            <th>{{ 'Aplica a' | t }}</th>
+            <th>{{ 'Usos' | t }}</th>
+            <th>{{ 'Vigencia' | t }}</th>
+            <th>{{ 'Estado' | t }}</th>
+            <th>{{ 'Acciones' | t }}</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let discount of discounts">
             <td><strong>{{ discount.code }}</strong></td>
             <td>{{ discount.name }}</td>
-            <td>{{ getTypeLabel(discount.type) }}</td>
+            <td>{{ getTypeLabel(discount.type) | t }}</td>
             <td>{{ formatValue(discount) }}</td>
-            <td>{{ getApplicableToLabel(discount.applicable_to) }}</td>
+            <td>{{ getApplicableToLabel(discount.applicable_to) | t }}</td>
             <td>{{ discount.times_used }}{{ discount.usage_limit ? ' / ' + discount.usage_limit : '' }}</td>
             <td>
-              {{ discount.start_date ? (discount.start_date | date:'dd/MM/yy') : '—' }}
+              {{ discount.start_date ? (discount.start_date | appDate) : '—' }}
               -
-              {{ discount.end_date ? (discount.end_date | date:'dd/MM/yy') : '∞' }}
+              {{ discount.end_date ? (discount.end_date | appDate) : '∞' }}
             </td>
             <td>
               <span class="status-badge" [class.active]="discount.is_active">
-                {{ discount.is_active ? 'Activo' : 'Inactivo' }}
+                {{ discount.is_active ? ('Activo' | t) : ('Inactivo' | t) }}
               </span>
             </td>
             <td>
-              <button class="btn-icon" (click)="editDiscount(discount)" title="Editar">
+              <button class="btn-icon" (click)="editDiscount(discount)" [attr.title]="'Editar' | t" *appHasPermission="'discounts.edit'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
               </button>
-              <button class="btn-icon btn-danger" (click)="deleteDiscount(discount)" title="Eliminar">
+              <button class="btn-icon btn-danger" (click)="deleteDiscount(discount)" [attr.title]="'Eliminar' | t" *appHasPermission="'discounts.delete'">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M3 6h18 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"></path>
                 </svg>
@@ -84,105 +84,105 @@
       </table>
 
       <div class="pagination" *ngIf="meta.last_page > 1">
-        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">Anterior</button>
-        <span>Página {{ meta.current_page }} de {{ meta.last_page }} ({{ meta.total }} descuentos)</span>
-        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">Siguiente</button>
+        <button (click)="goToPage(meta.current_page - 1)" [disabled]="meta.current_page === 1">{{ 'Anterior' | t }}</button>
+        <span>{{ 'Página' | t }} {{ meta.current_page }} {{ 'de' | t }} {{ meta.last_page }} ({{ meta.total }} {{ 'descuentos)' | t }}</span>
+        <button (click)="goToPage(meta.current_page + 1)" [disabled]="meta.current_page === meta.last_page">{{ 'Siguiente' | t }}</button>
       </div>
     </div>
 
     <div *ngIf="showForm" class="modal-overlay" (click)="cancelForm()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>{{ editingDiscount ? 'Editar Descuento' : 'Nuevo Descuento' }}</h2>
+          <h2>{{ editingDiscount ? ('Editar Descuento' | t) : ('Nuevo Descuento' | t) }}</h2>
           <button (click)="cancelForm()" class="btn-close">✕</button>
         </div>
         <form (ngSubmit)="saveDiscount()">
           <div class="form-row">
             <div class="form-group">
-              <label>Código *</label>
+              <label>{{ 'Código *' | t }}</label>
               <input type="text" [(ngModel)]="discountForm.code" name="code" required />
               <span class="field-error" *ngIf="formErrors.code">{{ formErrors.code[0] }}</span>
             </div>
             <div class="form-group">
-              <label>Nombre *</label>
+              <label>{{ 'Nombre *' | t }}</label>
               <input type="text" [(ngModel)]="discountForm.name" name="name" required />
               <span class="field-error" *ngIf="formErrors.name">{{ formErrors.name[0] }}</span>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Tipo *</label>
+              <label>{{ 'Tipo *' | t }}</label>
               <select [(ngModel)]="discountForm.type" name="type" required>
-                <option value="percentage">Porcentaje</option>
-                <option value="fixed_amount">Monto fijo</option>
-                <option value="buy_x_get_y">Compra X lleva Y</option>
-                <option value="free_shipping">Envío gratis</option>
+                <option value="percentage">{{ 'Porcentaje' | t }}</option>
+                <option value="fixed_amount">{{ 'Monto fijo' | t }}</option>
+                <option value="buy_x_get_y">{{ 'Compra X lleva Y' | t }}</option>
+                <option value="free_shipping">{{ 'Envío gratis' | t }}</option>
               </select>
             </div>
             <div class="form-group" *ngIf="discountForm.type !== 'buy_x_get_y'">
-              <label>Valor {{ discountForm.type === 'percentage' ? '(%)' : '($)' }} *</label>
+              <label>{{ 'Valor' | t }} {{ discountForm.type === 'percentage' ? '(%)' : '($)' }} *</label>
               <input type="number" [(ngModel)]="discountForm.value" name="value" step="0.01" min="0" required />
               <span class="field-error" *ngIf="formErrors.value">{{ formErrors.value[0] }}</span>
             </div>
           </div>
           <div class="form-row" *ngIf="discountForm.type === 'buy_x_get_y'">
             <div class="form-group">
-              <label>Compra (cantidad)</label>
+              <label>{{ 'Compra (cantidad)' | t }}</label>
               <input type="number" [(ngModel)]="discountForm.buy_quantity" name="buy_quantity" min="1" />
             </div>
             <div class="form-group">
-              <label>Lleva (cantidad)</label>
+              <label>{{ 'Lleva (cantidad)' | t }}</label>
               <input type="number" [(ngModel)]="discountForm.get_quantity" name="get_quantity" min="1" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Compra mínima ($)</label>
+              <label>{{ 'Compra mínima ($)' | t }}</label>
               <input type="number" [(ngModel)]="discountForm.minimum_purchase" name="minimum_purchase" step="0.01" min="0" />
             </div>
             <div class="form-group">
-              <label>Descuento máximo ($)</label>
+              <label>{{ 'Descuento máximo ($)' | t }}</label>
               <input type="number" [(ngModel)]="discountForm.maximum_discount" name="maximum_discount" step="0.01" min="0" />
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Límite de usos</label>
+              <label>{{ 'Límite de usos' | t }}</label>
               <input type="number" [(ngModel)]="discountForm.usage_limit" name="usage_limit" min="1" />
             </div>
             <div class="form-group">
-              <label>Aplica a *</label>
+              <label>{{ 'Aplica a *' | t }}</label>
               <select [(ngModel)]="discountForm.applicable_to" name="applicable_to" required>
-                <option value="all_products">Todos los productos</option>
-                <option value="specific_products">Productos específicos</option>
-                <option value="categories">Categorías</option>
+                <option value="all_products">{{ 'Todos los productos' | t }}</option>
+                <option value="specific_products">{{ 'Productos específicos' | t }}</option>
+                <option value="categories">{{ 'Categorías' | t }}</option>
               </select>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Fecha inicio</label>
-              <input type="date" [(ngModel)]="discountForm.start_date" name="start_date" />
+              <label>{{ 'Fecha inicio' | t }}</label>
+              <input appDateInput [(ngModel)]="discountForm.start_date" name="start_date" />
             </div>
             <div class="form-group">
-              <label>Fecha fin</label>
-              <input type="date" [(ngModel)]="discountForm.end_date" name="end_date" />
+              <label>{{ 'Fecha fin' | t }}</label>
+              <input appDateInput [(ngModel)]="discountForm.end_date" name="end_date" />
               <span class="field-error" *ngIf="formErrors.end_date">{{ formErrors.end_date[0] }}</span>
             </div>
           </div>
           <div class="form-group">
-            <label>Descripción</label>
+            <label>{{ 'Descripción' | t }}</label>
             <textarea [(ngModel)]="discountForm.description" name="description" rows="2"></textarea>
           </div>
           <div class="form-group checkbox">
             <label>
               <input type="checkbox" [(ngModel)]="discountForm.is_active" name="is_active" />
-              Activo
+              {{ 'Activo' | t }}
             </label>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn-cancel" (click)="cancelForm()">Cancelar</button>
-            <button type="submit" class="btn-save">Guardar</button>
+            <button type="button" class="btn-cancel" (click)="cancelForm()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save">{{ 'Guardar' | t }}</button>
           </div>
         </form>
       </div>

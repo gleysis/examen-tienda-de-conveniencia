@@ -20,6 +20,7 @@ interface Product {
   stock: number;
   min_stock: number;
   max_stock: number;
+  expiry_date: string | null;
   category_id: number;
   category: Category;
   barcode: string;
@@ -52,8 +53,17 @@ export class ProductService {
     return this.http.post<ProductResponse>(`${this.apiUrl}/products`, product);
   }
 
+  createProductFormData(formData: FormData): Observable<ProductResponse> {
+    return this.http.post<ProductResponse>(`${this.apiUrl}/products`, formData);
+  }
+
   updateProduct(id: number, product: any): Observable<ProductResponse> {
     return this.http.put<ProductResponse>(`${this.apiUrl}/products/${id}`, product);
+  }
+
+  updateProductFormData(id: number, formData: FormData): Observable<ProductResponse> {
+    formData.append('_method', 'PUT');
+    return this.http.post<ProductResponse>(`${this.apiUrl}/products/${id}`, formData);
   }
 
   deleteProduct(id: number): Observable<{ message: string }> {

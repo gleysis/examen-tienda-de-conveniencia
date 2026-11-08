@@ -1,67 +1,113 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
+import { CommonModule, formatDate } from '@angular/common';
+import { PreferencesService } from '../services/preferences';
+import { I18nService } from '../services/i18n';
+import { AuthService } from '../services/auth';
+import { MENU_ITEMS } from '../navigation';
+import { APP_PIPES } from '../pipes';
 
 @Component({
-  imports: [CommonModule],
+  imports: [CommonModule, ...APP_PIPES],
   selector: 'app-layout',
   styleUrl: './layout.css',
   templateUrl: './layout.html',
 })
-export class Layout {
-  @Input() userRole: 'admin' | 'seller' | 'warehouse' = 'admin';
+export class Layout implements OnInit, OnDestroy {
   @Input() userName: string = '';
+  @Input() pageTitle: string = '';
+  @Input() pageSubtitle: string = '';
   @Output() logout = new EventEmitter<void>();
 
-  sidebarCollapsed = false;
-  currentRoute: string = '';
+  private readonly pageSubtitles: Record<string, string> = {
+    '/dashboard': 'Resumen general del negocio',
+    '/pos': 'Registra ventas de forma rápida',
+    '/sales-history': 'Consulta las ventas realizadas',
+    '/products': 'Administra tu catálogo de productos',
+    '/categories': 'Organiza tus productos por categoría',
+    '/inventory': 'Controla el stock de tus productos',
+    '/suppliers': 'Gestiona tus proveedores',
+    '/returns': 'Gestiona las devoluciones de ventas',
+    '/discounts': 'Administra promociones y descuentos',
+    '/cash-registers': 'Controla la apertura y cierre de cajas',
+    '/reports': 'Analiza el rendimiento del negocio',
+    '/users': 'Administra los usuarios del sistema',
+    '/roles': 'Define roles y permisos',
+    '/settings': 'Personaliza el sistema',
+    '/backups': 'Respalda y restaura tu información',
+  };
 
-  constructor(private router: Router, private route: ActivatedRoute) {
+  private readonly authService = inject(AuthService);
+
+  currentRoute: string = '';
+  user: any = this.authService.getCurrentUser();
+  currentDate = '';
+  currentTime = '';
+  currentWeekday = '';
+  private clockInterval: any;
+
+  private readonly preferences = inject(PreferencesService);
+  private readonly i18n = inject(I18nService);
+
+  constructor(private router: Router) {
+    this.currentRoute = this.router.url;
     this.router.events.subscribe(() => {
       this.currentRoute = this.router.url;
     });
   }
 
-  adminMenuItems = [
-    { icon: 'home', label: 'Inicio', route: '/dashboard' },
-    { icon: 'users', label: 'Usuarios', route: '/users' },
-    { icon: 'users', label: 'Roles', route: '/roles' },
-    { icon: 'box', label: 'Productos', route: '/products' },
-    { icon: 'archive', label: 'Inventario', route: '/inventory' },
-    { icon: 'chart-bar', label: 'Reportes', route: '/reports' },
-    { icon: 'shopping-cart', label: 'Ventas', route: '/pos' },
-    { icon: 'truck', label: 'Proveedores', route: '/suppliers' },
-    { icon: 'arrow-rotate-left', label: 'Devoluciones', route: '/returns' },
-    { icon: 'tag', label: 'Descuentos', route: '/discounts' },
-    { icon: 'cash-register', label: 'Cajas', route: '/cash-registers' },
-    { icon: 'cog', label: 'Configuración', route: '/settings' },
-    { icon: 'archive', label: 'Respaldos', route: '/backups' },
-  ];
+  ngOnInit(): void {
+    this.updateClock();
+    this.clockInterval = setInterval(() => this.updateClock(), 1000);
+  }
 
-  sellerMenuItems = [
-    { icon: 'home', label: 'Inicio', route: '/dashboard' },
-    { icon: 'shopping-cart', label: 'Ventas', route: '/pos' },
-    { icon: 'history', label: 'Historial de Ventas', route: '/sales-history' },
-    { icon: 'box', label: 'Productos', route: '/products' },
-    { icon: 'chart-bar', label: 'Reportes básicos', route: '/reports' },
-  ];
-
-  warehouseMenuItems = [
-    { icon: 'home', label: 'Inicio', route: '/dashboard' },
-    { icon: 'archive', label: 'Inventario', route: '/inventory' },
-    { icon: 'box', label: 'Productos', route: '/products' },
-    { icon: 'truck', label: 'Proveedores', route: '/suppliers' },
-  ];
+  ngOnDestroy(): void {
+    if (this.clockInterval) {
+      clearInterval(this.clockInterval);
+    }
+  }
 
   get menuItems() {
-    switch (this.userRole) {
-      case 'seller':
-        return this.sellerMenuItems;
-      case 'warehouse':
-        return this.warehouseMenuItems;
-      default:
-        return this.adminMenuItems;
-    }
+    return MENU_ITEMS.filter((item) => !item.permissions.length || this.authService.hasAnyPermission(item.permissions));
+  }
+
+  private get currentMenuItem() {
+    const path = this.currentRoute.split(/[?#]/)[0];
+    return MENU_ITEMS.find((item) => path === item.route || path.startsWith(item.route + '/'));
+  }
+
+  get headerTitle(): string {
+    return this.pageTitle || this.currentMenuItem?.label || '';
+  }
+
+  get headerSubtitle(): string {
+    const route = this.currentMenuItem?.route;
+    return this.pageSubtitle || (route ? this.pageSubtitles[route] : '') || '';
+  }
+
+  get headerIcon(): string {
+    return this.currentMenuItem?.icon || 'home';
+  }
+
+  get firstName(): string {
+    const name = this.user?.name || this.userName || '';
+    return name.split(' ')[0];
+  }
+
+  get userInitial(): string {
+    return (this.user?.name || this.userName || 'U').charAt(0).toUpperCase();
+  }
+
+  get userRole(): string {
+    return this.user?.roles?.[0]?.name || 'Usuario';
+  }
+
+  private updateClock(): void {
+    const now = new Date();
+    const locale = this.i18n.locale;
+    this.currentDate = formatDate(now, 'longDate', locale);
+    this.currentWeekday = formatDate(now, 'EEEE', locale);
+    this.currentTime = formatDate(now, this.preferences.timeFormat, locale);
   }
 
   navigate(route: string) {
@@ -70,10 +116,16 @@ export class Layout {
 
   onLogout() {
     this.logout.emit();
-  }
-
-  toggleSidebar() {
-    this.sidebarCollapsed = !this.sidebarCollapsed;
+    this.authService.logout().subscribe({
+      next: () => {
+        window.location.href = '/login';
+      },
+      error: () => {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      },
+    });
   }
 
   getIconPath(iconName: string): string {
@@ -88,28 +140,9 @@ export class Layout {
       'arrow-rotate-left': 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
       tag: 'M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z M7 7h.01',
       'cash-register': 'M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6zm3 0v12 M10 6v12 M16 6v12 M22 6v12',
-      cog: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z',
+      cog: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
       history: 'M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
     };
     return icons[iconName] || icons['home'];
-  }
-
-  getPageTitle(): string {
-    const routeTitles: Record<string, string> = {
-      '/dashboard': 'Panel de Administrador',
-      '/users': 'Usuarios',
-      '/roles': 'Roles y Permisos',
-      '/products': 'Gestión de Productos',
-      '/inventory': 'Inventario',
-      '/reports': 'Reportes',
-      '/pos': 'Área de Venta',
-      '/suppliers': 'Proveedores',
-      '/returns': 'Devoluciones',
-      '/discounts': 'Descuentos',
-      '/cash-registers': 'Cajas',
-      '/backups': 'Respaldos',
-      '/settings': 'Configuración',
-    };
-    return routeTitles[this.currentRoute] || 'Tienda Express';
   }
 }

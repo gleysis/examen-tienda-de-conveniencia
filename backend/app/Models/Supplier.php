@@ -32,8 +32,8 @@ class Supplier extends Model
 
     protected $casts = [
         'payment_terms' => 'integer',
-        'credit_limit' => 'decimal:2',
-        'current_balance' => 'decimal:2',
+        'credit_limit' => 'float',
+        'current_balance' => 'float',
         'is_active' => 'boolean',
     ];
 

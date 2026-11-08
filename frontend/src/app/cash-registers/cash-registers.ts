@@ -5,6 +5,8 @@ import { CashRegisterService } from '../services/cash-register';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { HasPermission } from '../directives/has-permission';
+import { APP_PIPES } from '../pipes';
 
 interface CashRegister {
   id: number;
@@ -28,7 +30,7 @@ interface CashRegister {
 }
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, Layout, HasPermission, ...APP_PIPES],
   selector: 'app-cash-registers',
   styleUrl: './cash-registers.css',
   templateUrl: './cash-registers.html',

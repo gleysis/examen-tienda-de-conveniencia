@@ -8,9 +8,14 @@ import type { Sale } from '../services/sale';
 import { Layout } from '../layout/layout';
 import { AuthService } from '../services/auth';
 import { PaginationMeta } from '../services/pagination';
+import { DateInput } from '../directives/date-input';
+import { APP_PIPES } from '../pipes';
+import { AppDatePipe } from '../pipes/app-date';
+import { TicketData, TicketPrinterService } from '../services/ticket-printer';
+import { tr } from '../services/i18n';
 
 @Component({
-  imports: [CommonModule, FormsModule, Layout],
+  imports: [CommonModule, FormsModule, DateInput, Layout, ...APP_PIPES],
   selector: 'app-sales-history',
   styleUrl: './sales-history.css',
   templateUrl: './sales-history.html',
@@ -32,6 +37,7 @@ export class SalesHistory implements OnInit, OnDestroy {
 
   constructor(
     private saleService: SaleService,
+    private ticketPrinter: TicketPrinterService,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
     private router: Router
@@ -104,8 +110,32 @@ export class SalesHistory implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  private readonly datePipe = new AppDatePipe();
+
   printReceipt(sale: Sale): void {
-    alert('Comprobante de venta:\n\nFactura: ' + sale.invoice_number + '\nTotal: $' + sale.total.toFixed(2) + '\nMétodo de pago: ' + this.getPaymentMethodLabel(sale.payment_method) + '\nFecha: ' + new Date(sale.created_at).toLocaleString());
+    this.ticketPrinter.loadSettings().subscribe({
+      next: (settings) => this.ticketPrinter.print(this.toTicket(sale), settings),
+      error: () => this.ticketPrinter.print(this.toTicket(sale), TicketPrinterService.toReceiptSettings({})),
+    });
+  }
+
+  private toTicket(sale: Sale): TicketData {
+    return {
+      invoice_number: sale.invoice_number,
+      date: this.datePipe.transform(sale.created_at, 'datetime'),
+      cashier: sale.user?.name || '',
+      items: (sale.items || []).map((item) => ({
+        name: item.product?.name || tr('Producto'),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        subtotal: Number(item.subtotal),
+      })),
+      subtotal: Number(sale.subtotal),
+      discount: Number(sale.discount),
+      tax: Number(sale.tax),
+      total: Number(sale.total),
+      payment_method: sale.payment_method,
+    };
   }
 
   getPaymentMethodLabel(method: string): string {

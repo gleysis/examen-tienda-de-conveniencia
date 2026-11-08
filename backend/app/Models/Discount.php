@@ -25,9 +25,9 @@ class Discount extends Model
     ];
 
     protected $casts = [
-        'value' => 'decimal:2',
-        'minimum_purchase' => 'decimal:2',
-        'maximum_discount' => 'decimal:2',
+        'value' => 'float',
+        'minimum_purchase' => 'float',
+        'maximum_discount' => 'float',
         'usage_limit' => 'integer',
         'times_used' => 'integer',
         'buy_quantity' => 'integer',

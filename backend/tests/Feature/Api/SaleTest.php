@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
+use App\Support\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CreatesUsersWithPermissions;
@@ -17,7 +19,7 @@ class SaleTest extends TestCase
     public function test_creates_sale_and_decrements_stock(): void
     {
         $cashier = $this->userWithPermissions(['sales.create']);
-        $product = Product::factory()->create(['stock' => 10]);
+        $product = Product::factory()->create(['stock' => 10, 'price' => 20.00]);
         Sanctum::actingAs($cashier);
 
         $response = $this->postJson('/api/sales', [
@@ -32,7 +34,8 @@ class SaleTest extends TestCase
         $this->assertDatabaseHas('sales', [
             'user_id' => $cashier->id,
             'subtotal' => 60.00,
-            'total' => 60.00,
+            'tax' => 9.00,
+            'total' => 69.00,
             'payment_method' => 'cash',
             'status' => 'completed',
         ]);
@@ -71,6 +74,40 @@ class SaleTest extends TestCase
         $this->assertDatabaseCount('sales', 0);
         $this->assertDatabaseCount('inventory_movements', 0);
         $this->assertSame(2, $product->fresh()->stock);
+    }
+
+    public function test_does_not_create_cash_sale_when_amount_received_is_less_than_total(): void
+    {
+        $product = Product::factory()->create(['stock' => 10, 'price' => 100.00]);
+        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+
+        $this->postJson('/api/sales', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 2],
+            ],
+            'payment_method' => 'cash',
+            'amount_received' => 200,
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'Pago insuficiente. El dinero recibido (200.00) es menor que el total a pagar (230.00).');
+
+        $this->assertDatabaseCount('sales', 0);
+        $this->assertSame(10, $product->fresh()->stock);
+    }
+
+    public function test_creates_cash_sale_when_amount_received_covers_total(): void
+    {
+        $product = Product::factory()->create(['stock' => 10, 'price' => 100.00]);
+        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+
+        $this->postJson('/api/sales', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 2],
+            ],
+            'payment_method' => 'cash',
+            'amount_received' => 230,
+        ])->assertOk();
+
+        $this->assertDatabaseCount('sales', 1);
     }
 
     public function test_returns_422_when_required_fields_are_missing(): void
@@ -139,28 +176,77 @@ class SaleTest extends TestCase
         $this->getJson('/api/sales')->assertForbidden();
     }
 
-    public function test_applies_discount_and_tax_to_total(): void
+    public function test_ignores_client_supplied_prices_tax_and_discount(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create']);
-        $product = Product::factory()->create(['stock' => 10]);
-        Sanctum::actingAs($cashier);
+        $product = Product::factory()->create(['stock' => 10, 'price' => 50.00]);
+        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
 
-        $response = $this->postJson('/api/sales', [
+        $this->postJson('/api/sales', [
             'items' => [
-                ['product_id' => $product->id, 'quantity' => 2, 'unit_price' => 50.00],
+                ['product_id' => $product->id, 'quantity' => 2, 'unit_price' => 0.01],
             ],
             'payment_method' => 'card',
-            'discount' => 10.00,
-            'tax' => 9.00,
-        ]);
-
-        $response->assertOk();
+            'discount' => 100.00,
+            'tax' => 0,
+        ])->assertOk();
 
         $this->assertDatabaseHas('sales', [
             'subtotal' => 100.00,
-            'discount' => 10.00,
-            'tax' => 9.00,
-            'total' => 99.00,
+            'discount' => 0,
+            'tax' => 15.00,
+            'total' => 115.00,
         ]);
+        $this->assertDatabaseHas('sale_items', [
+            'product_id' => $product->id,
+            'unit_price' => 50.00,
+            'subtotal' => 100.00,
+        ]);
+    }
+
+    public function test_applies_configured_tax_rate(): void
+    {
+        SystemSettings::updateMany(['tax_rate' => 10]);
+        $product = Product::factory()->create(['stock' => 10, 'price' => 33.33]);
+        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+
+        $this->postJson('/api/sales', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1],
+            ],
+            'payment_method' => 'card',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('sales', [
+            'subtotal' => 33.33,
+            'tax' => 3.33,
+            'total' => 36.66,
+        ]);
+    }
+
+    public function test_assigns_sale_to_own_open_register_ignoring_client_register(): void
+    {
+        $cashier = $this->userWithPermissions(['sales.create']);
+        $otherRegister = CashRegister::create([
+            'name' => 'Caja ajena',
+            'opening_balance' => 0,
+            'current_balance' => 0,
+            'expected_closing' => 0,
+            'status' => 'open',
+            'user_id' => User::factory()->create()->id,
+            'opened_at' => now(),
+        ]);
+        $product = Product::factory()->create(['stock' => 10, 'price' => 10.00]);
+        Sanctum::actingAs($cashier);
+
+        $this->postJson('/api/sales', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1],
+            ],
+            'payment_method' => 'cash',
+            'cash_register_id' => $otherRegister->id,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('sales', ['user_id' => $cashier->id, 'cash_register_id' => null]);
+        $this->assertEquals(0, $otherRegister->fresh()->current_balance);
     }
 }

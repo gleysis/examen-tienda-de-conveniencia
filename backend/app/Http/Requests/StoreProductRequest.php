@@ -31,10 +31,12 @@ class StoreProductRequest extends FormRequest
             'stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'nullable|integer|min:0',
+            'expiry_date' => 'nullable|date',
             'category_id' => 'required|exists:categories,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'barcode' => 'nullable|string|max:255',
             'image' => 'nullable|string',
+            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'is_active' => 'boolean',
         ];
     }

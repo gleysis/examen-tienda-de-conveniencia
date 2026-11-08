@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Support\SystemSettings;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSystemSettingRequest extends FormRequest
 {
@@ -23,9 +25,9 @@ class StoreSystemSettingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'key' => 'required|string|max:255|unique:system_settings',
+            'key' => ['required', 'string', 'max:255', 'unique:system_settings', Rule::notIn(SystemSettings::catalogKeys())],
             'value' => 'nullable|string',
-            'type' => 'required|in:string,integer,float,boolean,array,json',
+            'type' => 'required|in:string,text,integer,float,boolean,array,json',
             'group' => 'required|string|max:100',
             'description' => 'nullable|string',
             'is_public' => 'boolean',
