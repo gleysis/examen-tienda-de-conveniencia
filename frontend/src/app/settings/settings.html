@@ -28,6 +28,16 @@
     >
       {{ group.label | t }}
     </button>
+    <button
+      type="button"
+      role="tab"
+      class="tab-button"
+      [class.active]="activeGroup === securityGroup"
+      [attr.aria-selected]="activeGroup === securityGroup"
+      (click)="setGroup(securityGroup)"
+    >
+      {{ 'Seguridad' | t }}
+    </button>
   </div>
 
   <div *ngIf="errorMessage" class="error-message" role="alert">
@@ -41,7 +51,74 @@
 
   <div *ngIf="isLoading" class="loading">{{ 'Cargando...' | t }}</div>
 
-  <div *ngIf="!isLoading && currentGroup as group" class="settings-panel">
+  <div *ngIf="!isLoading && activeGroup === securityGroup" class="settings-panel">
+    <div class="panel-header">
+      <h2>{{ 'Seguridad' | t }}</h2>
+      <p>{{ 'Cambia la contraseña de tu cuenta. Al guardarla, las demás sesiones se cerrarán.' | t }}</p>
+    </div>
+
+    <form (ngSubmit)="savePassword()" class="settings-form">
+      <div class="field">
+        <div class="field-label">
+          <label for="current_password">{{ 'Contraseña actual' | t }}</label>
+          <small class="field-help">{{ 'Necesitamos tu contraseña actual para confirmar que eres tú.' | t }}</small>
+        </div>
+        <div class="field-input">
+          <input
+            type="password"
+            id="current_password"
+            name="current_password"
+            [(ngModel)]="currentPassword"
+            autocomplete="current-password"
+            [disabled]="isSavingPassword"
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <label for="new_password">{{ 'Nueva contraseña' | t }}</label>
+          <small class="field-help">{{ 'Debe ser distinta de la contraseña actual.' | t }}</small>
+        </div>
+        <div class="field-input">
+          <input
+            type="password"
+            id="new_password"
+            name="new_password"
+            [(ngModel)]="newPassword"
+            autocomplete="new-password"
+            [disabled]="isSavingPassword"
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">
+          <label for="password_confirmation">{{ 'Confirmar nueva contraseña' | t }}</label>
+        </div>
+        <div class="field-input">
+          <input
+            type="password"
+            id="password_confirmation"
+            name="password_confirmation"
+            [(ngModel)]="passwordConfirmation"
+            autocomplete="new-password"
+            [disabled]="isSavingPassword"
+          />
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <span class="spacer"></span>
+        <span *ngIf="isPasswordFormDirty" class="unsaved-indicator">{{ 'Cambios sin guardar' | t }}</span>
+        <button type="submit" class="btn btn-primary" [disabled]="!isPasswordFormDirty || isSavingPassword">
+          {{ (isSavingPassword ? 'Guardando...' : 'Cambiar contraseña') | t }}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div *ngIf="!isLoading && activeGroup !== securityGroup && currentGroup as group" class="settings-panel">
     <div class="panel-header">
       <h2>{{ group.label | t }}</h2>
       <p *ngIf="group.description">{{ group.description | t }}</p>

@@ -11,6 +11,7 @@ use App\Http\Resources\CashRegisterResource;
 use App\Models\CashRegister;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 class CashRegisterController extends Controller
 {
@@ -85,22 +86,30 @@ class CashRegisterController extends Controller
         ];
     }
 
+    /**
+     * The row is locked so a sale in progress cannot land on the register
+     * after its totals have been counted.
+     */
     public function close(CloseCashRegisterRequest $request, CashRegister $cashRegister): array
     {
-        if ($cashRegister->status === 'closed') {
-            abort(422, 'Esta caja registradora ya está cerrada');
-        }
+        return DB::transaction(function () use ($request, $cashRegister) {
+            $cashRegister = CashRegister::lockForUpdate()->findOrFail($cashRegister->id);
 
-        if ($request->user()->isLimitedToOwnRecords() && $cashRegister->user_id !== $request->user()->id) {
-            abort(403, 'Solo puedes cerrar tu propia caja.');
-        }
+            if ($cashRegister->status === 'closed') {
+                abort(422, 'Esta caja registradora ya está cerrada');
+            }
 
-        $cashRegister->close($request->actual_closing);
+            if ($request->user()->isLimitedToOwnRecords() && $cashRegister->user_id !== $request->user()->id) {
+                abort(403, 'Solo puedes cerrar tu propia caja.');
+            }
 
-        return [
-            'cash_register' => new CashRegisterResource($cashRegister->fresh()),
-            'message' => 'Caja registradora cerrada exitosamente',
-        ];
+            $cashRegister->close($request->actual_closing);
+
+            return [
+                'cash_register' => new CashRegisterResource($cashRegister->fresh()),
+                'message' => 'Caja registradora cerrada exitosamente',
+            ];
+        });
     }
 
     public function destroy(CashRegister $cashRegister): array

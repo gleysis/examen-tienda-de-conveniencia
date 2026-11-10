@@ -78,6 +78,14 @@ export class AuthService {
     );
   }
 
+  changePassword(currentPassword: string, password: string, passwordConfirmation: string): Observable<{ message: string }> {
+    return this.http.put<{ message: string }>(`${this.apiUrl}/me/password`, {
+      current_password: currentPassword,
+      password,
+      password_confirmation: passwordConfirmation,
+    });
+  }
+
   getUser(): Observable<UserResponse> {
     console.log('AuthService - Getting current user');
     return this.http.get<UserResponse>(`${this.apiUrl}/user`).pipe(

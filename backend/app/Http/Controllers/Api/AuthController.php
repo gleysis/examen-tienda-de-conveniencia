@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdatePasswordRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -62,6 +63,22 @@ class AuthController extends Controller
     {
         return [
             'user' => $request->user()->load('roles.permissions'),
+        ];
+    }
+
+    /**
+     * Change the authenticated user's password and sign out their other sessions.
+     */
+    public function updatePassword(UpdatePasswordRequest $request): array
+    {
+        $user = $request->user();
+
+        $user->update(['password' => $request->validated('password')]);
+
+        $user->tokens()->whereKeyNot($user->currentAccessToken()->getKey())->delete();
+
+        return [
+            'message' => 'Contraseña actualizada correctamente',
         ];
     }
 }

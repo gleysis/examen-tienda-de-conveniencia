@@ -121,6 +121,28 @@ class CashRegisterTest extends TestCase
         $this->assertNotNull($register->closed_at);
     }
 
+    public function test_cannot_sell_after_closing_own_register(): void
+    {
+        $cashier = $this->userWithPermissions(['sales.create', 'cash-registers.close']);
+        $register = CashRegister::factory()->openFor($cashier)->create();
+        $product = Product::factory()->create(['stock' => 10, 'price' => 25.00]);
+        Sanctum::actingAs($cashier);
+
+        $this->postJson("/api/cash-registers/{$register->id}/close", ['actual_closing' => 100.00])->assertOk();
+
+        $this->postJson('/api/sales', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1],
+            ],
+            'payment_method' => 'cash',
+        ])->assertUnprocessable();
+
+        $register->refresh();
+        $this->assertDatabaseCount('sales', 0);
+        $this->assertSame(0.0, $register->total_sales);
+        $this->assertSame(100.0, $register->expected_closing);
+    }
+
     public function test_cannot_close_an_already_closed_register(): void
     {
         $manager = $this->userWithPermissions(['cash-registers.close']);

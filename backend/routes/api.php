@@ -149,6 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/settings/group', [SystemSettingController::class, 'getByGroup'])->middleware('can:settings.view');
     Route::get('/me/preferences', [UserPreferenceController::class, 'show']);
     Route::put('/me/preferences', [UserPreferenceController::class, 'update']);
+    Route::put('/me/password', [AuthController::class, 'updatePassword'])->middleware('throttle:6,1');
 
     Route::get('/settings/schema', [SystemSettingController::class, 'schema']);
     Route::put('/settings/bulk', [SystemSettingController::class, 'bulkUpdate']);

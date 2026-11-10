@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\CashRegister;
 use App\Models\Discount;
 use App\Models\Product;
 use App\Models\SystemSetting;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +18,14 @@ use Tests\TestCase;
 class SystemSettingTest extends TestCase
 {
     use CreatesUsersWithPermissions, RefreshDatabase;
+
+    private function cashierWithOpenRegister(): User
+    {
+        $cashier = $this->userWithPermissions(['sales.create', 'settings.edit']);
+        CashRegister::factory()->openFor($cashier)->create();
+
+        return $cashier;
+    }
 
     public function test_schema_returns_catalog_groups_with_defaults(): void
     {
@@ -324,7 +334,7 @@ class SystemSettingTest extends TestCase
 
     public function test_sale_rejects_discounts_when_disabled(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create', 'settings.edit']);
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 10, 'price' => 100]);
         $this->discountCode('PROMO10', 10);
         Sanctum::actingAs($cashier);
@@ -343,7 +353,7 @@ class SystemSettingTest extends TestCase
 
     public function test_sale_rejects_discount_above_maximum_percent(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create', 'settings.edit']);
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 10, 'price' => 100]);
         $this->discountCode('PROMO15', 15);
         $this->discountCode('PROMO10', 10);
@@ -366,7 +376,7 @@ class SystemSettingTest extends TestCase
 
     public function test_sale_reports_products_that_ran_out_of_stock(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create', 'settings.edit']);
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 2, 'name' => 'Leche']);
         Sanctum::actingAs($cashier);
 
@@ -434,7 +444,7 @@ class SystemSettingTest extends TestCase
 
     public function test_sale_uses_invoice_prefix_from_settings(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create', 'settings.edit']);
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 10]);
         Sanctum::actingAs($cashier);
 
@@ -455,7 +465,7 @@ class SystemSettingTest extends TestCase
 
     public function test_sale_allows_negative_stock_when_enabled(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create', 'settings.edit']);
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 1]);
         Sanctum::actingAs($cashier);
 

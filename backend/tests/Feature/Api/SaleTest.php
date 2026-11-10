@@ -16,9 +16,17 @@ class SaleTest extends TestCase
 {
     use CreatesUsersWithPermissions, RefreshDatabase;
 
-    public function test_creates_sale_and_decrements_stock(): void
+    private function cashierWithOpenRegister(): User
     {
         $cashier = $this->userWithPermissions(['sales.create']);
+        CashRegister::factory()->openFor($cashier)->create();
+
+        return $cashier;
+    }
+
+    public function test_creates_sale_and_decrements_stock(): void
+    {
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 10, 'price' => 20.00]);
         Sanctum::actingAs($cashier);
 
@@ -58,7 +66,7 @@ class SaleTest extends TestCase
 
     public function test_does_not_create_sale_when_stock_is_insufficient(): void
     {
-        $cashier = $this->userWithPermissions(['sales.create']);
+        $cashier = $this->cashierWithOpenRegister();
         $product = Product::factory()->create(['stock' => 2]);
         Sanctum::actingAs($cashier);
 
@@ -79,7 +87,7 @@ class SaleTest extends TestCase
     public function test_does_not_create_cash_sale_when_amount_received_is_less_than_total(): void
     {
         $product = Product::factory()->create(['stock' => 10, 'price' => 100.00]);
-        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+        Sanctum::actingAs($this->cashierWithOpenRegister());
 
         $this->postJson('/api/sales', [
             'items' => [
@@ -97,7 +105,7 @@ class SaleTest extends TestCase
     public function test_creates_cash_sale_when_amount_received_covers_total(): void
     {
         $product = Product::factory()->create(['stock' => 10, 'price' => 100.00]);
-        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+        Sanctum::actingAs($this->cashierWithOpenRegister());
 
         $this->postJson('/api/sales', [
             'items' => [
@@ -179,7 +187,7 @@ class SaleTest extends TestCase
     public function test_ignores_client_supplied_prices_tax_and_discount(): void
     {
         $product = Product::factory()->create(['stock' => 10, 'price' => 50.00]);
-        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+        Sanctum::actingAs($this->cashierWithOpenRegister());
 
         $this->postJson('/api/sales', [
             'items' => [
@@ -207,7 +215,7 @@ class SaleTest extends TestCase
     {
         SystemSettings::updateMany(['tax_rate' => 10]);
         $product = Product::factory()->create(['stock' => 10, 'price' => 33.33]);
-        Sanctum::actingAs($this->userWithPermissions(['sales.create']));
+        Sanctum::actingAs($this->cashierWithOpenRegister());
 
         $this->postJson('/api/sales', [
             'items' => [
@@ -226,15 +234,8 @@ class SaleTest extends TestCase
     public function test_assigns_sale_to_own_open_register_ignoring_client_register(): void
     {
         $cashier = $this->userWithPermissions(['sales.create']);
-        $otherRegister = CashRegister::create([
-            'name' => 'Caja ajena',
-            'opening_balance' => 0,
-            'current_balance' => 0,
-            'expected_closing' => 0,
-            'status' => 'open',
-            'user_id' => User::factory()->create()->id,
-            'opened_at' => now(),
-        ]);
+        $ownRegister = CashRegister::factory()->openFor($cashier)->create();
+        $otherRegister = CashRegister::factory()->openFor(User::factory()->create(), 0)->create();
         $product = Product::factory()->create(['stock' => 10, 'price' => 10.00]);
         Sanctum::actingAs($cashier);
 
@@ -246,7 +247,28 @@ class SaleTest extends TestCase
             'cash_register_id' => $otherRegister->id,
         ])->assertOk();
 
-        $this->assertDatabaseHas('sales', ['user_id' => $cashier->id, 'cash_register_id' => null]);
+        $this->assertDatabaseHas('sales', ['user_id' => $cashier->id, 'cash_register_id' => $ownRegister->id]);
         $this->assertEquals(0, $otherRegister->fresh()->current_balance);
+    }
+
+    public function test_rejects_sale_when_cashier_has_no_open_register(): void
+    {
+        $cashier = $this->userWithPermissions(['sales.create']);
+        CashRegister::factory()->create(['user_id' => $cashier->id, 'status' => 'closed']);
+        CashRegister::factory()->openFor(User::factory()->create())->create();
+        $product = Product::factory()->create(['stock' => 10, 'price' => 10.00]);
+        Sanctum::actingAs($cashier);
+
+        $this->postJson('/api/sales', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1],
+            ],
+            'payment_method' => 'cash',
+        ])->assertUnprocessable()
+            ->assertJsonPath('message', 'No tienes una caja abierta. Abre tu caja antes de registrar ventas.');
+
+        $this->assertDatabaseCount('sales', 0);
+        $this->assertDatabaseCount('inventory_movements', 0);
+        $this->assertSame(10, $product->fresh()->stock);
     }
 }

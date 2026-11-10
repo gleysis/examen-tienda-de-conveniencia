@@ -47,6 +47,12 @@ class SaleController extends Controller
     public function store(StoreSaleRequest $request): array
     {
         return DB::transaction(function () use ($request) {
+            $cashRegister = CashRegister::where('user_id', auth()->id())->open()->lockForUpdate()->first();
+
+            if (! $cashRegister) {
+                abort(422, 'No tienes una caja abierta. Abre tu caja antes de registrar ventas.');
+            }
+
             $subtotal = 0;
             $saleItems = [];
 
@@ -117,12 +123,10 @@ class SaleController extends Controller
             $lastNumber = $lastSale ? (int) Str::afterLast($lastSale->invoice_number, '-') : 0;
             $invoiceNumber = $prefix.'-'.str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
-            $cashRegisterId = CashRegister::where('user_id', auth()->id())->open()->value('id');
-
             $sale = Sale::create([
                 'invoice_number' => $invoiceNumber,
                 'user_id' => auth()->id(),
-                'cash_register_id' => $cashRegisterId,
+                'cash_register_id' => $cashRegister->id,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'discount' => $discount,
@@ -132,9 +136,7 @@ class SaleController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            if ($cashRegisterId) {
-                CashRegister::find($cashRegisterId)?->addSale($total, $request->payment_method);
-            }
+            $cashRegister->addSale($total, $request->payment_method);
 
             $notifyOutOfStock = (bool) SystemSettings::value('notify_out_of_stock', true);
             $outOfStockProducts = [];
@@ -226,7 +228,7 @@ class SaleController extends Controller
             ]);
         }
 
-        $register = $sale->cashRegister;
+        $register = CashRegister::lockForUpdate()->find($sale->cash_register_id);
         if ($register?->status === 'open') {
             $register->addSale(-$sale->total, $sale->payment_method);
         }

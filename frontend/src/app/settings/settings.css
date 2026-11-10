@@ -150,6 +150,7 @@
 
 .field-input input[type='text'],
 .field-input input[type='number'],
+.field-input input[type='password'],
 .field-input select,
 .field-input textarea {
   width: 100%;

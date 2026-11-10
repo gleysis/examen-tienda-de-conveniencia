@@ -18,6 +18,7 @@ import { APP_PIPES } from '../pipes';
 import { catchError, forkJoin, of } from 'rxjs';
 
 const PERSONAL_GROUP = 'personal';
+const SECURITY_GROUP = 'security';
 
 @Component({
   imports: [CommonModule, FormsModule, Layout, ...APP_PIPES],
@@ -47,6 +48,12 @@ export class Settings implements OnInit {
   historyMeta: PaginationMeta | null = null;
 
   user: any;
+
+  readonly securityGroup = SECURITY_GROUP;
+  currentPassword = '';
+  newPassword = '';
+  passwordConfirmation = '';
+  isSavingPassword = false;
 
   constructor(
     private systemSettingService: SystemSettingService,
@@ -109,14 +116,23 @@ export class Settings implements OnInit {
     return !!group && this.serialize(group) !== this.savedSnapshot[group.key];
   }
 
+  get isPasswordFormDirty(): boolean {
+    return !!(this.currentPassword || this.newPassword || this.passwordConfirmation);
+  }
+
   setGroup(group: string): void {
     if (group === this.activeGroup) {
       return;
     }
-    if (this.isDirty && !confirm(this.i18n.t('Tienes cambios sin guardar en esta sección. ¿Deseas descartarlos?'))) {
+    const dirty = this.activeGroup === SECURITY_GROUP ? this.isPasswordFormDirty : this.isDirty;
+    if (dirty && !confirm(this.i18n.t('Tienes cambios sin guardar en esta sección. ¿Deseas descartarlos?'))) {
       return;
     }
-    this.discardChanges();
+    if (this.activeGroup === SECURITY_GROUP) {
+      this.clearPasswordForm();
+    } else {
+      this.discardChanges();
+    }
     this.activeGroup = group;
     this.errorMessage = '';
   }
@@ -150,6 +166,35 @@ export class Settings implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => this.handleError(error, 'Error al guardar la configuración'),
+    });
+  }
+
+  savePassword(): void {
+    if (this.isSavingPassword) {
+      return;
+    }
+    if (!this.currentPassword || !this.newPassword || !this.passwordConfirmation) {
+      this.errorMessage = this.i18n.t('Completa todos los campos de contraseña');
+      return;
+    }
+    if (this.newPassword !== this.passwordConfirmation) {
+      this.errorMessage = this.i18n.t('La confirmación de la contraseña no coincide.');
+      return;
+    }
+
+    this.isSavingPassword = true;
+    this.errorMessage = '';
+    this.authService.changePassword(this.currentPassword, this.newPassword, this.passwordConfirmation).subscribe({
+      next: (response) => {
+        this.isSavingPassword = false;
+        this.clearPasswordForm();
+        this.notificationService.success(this.i18n.t(response.message));
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.isSavingPassword = false;
+        this.handleError(error, 'Error al cambiar la contraseña');
+      },
     });
   }
 
@@ -363,6 +408,12 @@ export class Settings implements OnInit {
       default:
         return field.value ?? '';
     }
+  }
+
+  private clearPasswordForm(): void {
+    this.currentPassword = '';
+    this.newPassword = '';
+    this.passwordConfirmation = '';
   }
 
   private handleError(error: any, fallback: string): void {

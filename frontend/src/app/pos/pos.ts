@@ -5,6 +5,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { ProductService } from '../services/product';
 import { SaleService } from '../services/sale';
+import { CashRegisterService } from '../services/cash-register';
 import { DiscountService } from '../services/discount';
 import { CategoryService } from '../services/category';
 import { SystemSettingService } from '../services/system-setting';
@@ -56,6 +57,9 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
   taxRate = 0.15;
   showCheckout = false;
   messageType: 'success' | 'error' = 'error';
+  /** null while unknown (still loading or not allowed to check); the backend always enforces it. */
+  hasOpenCashRegister: boolean | null = null;
+  readonly closedRegisterMessage = 'No tienes una caja abierta. Abre tu caja antes de registrar ventas.';
 
   @ViewChild('searchInput') searchInputRef?: ElementRef<HTMLInputElement>;
   private scanBuffer = '';
@@ -115,6 +119,7 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
     private ticketPrinter: TicketPrinterService,
     private productService: ProductService,
     private saleService: SaleService,
+    private cashRegisterService: CashRegisterService,
     private discountService: DiscountService,
     private categoryService: CategoryService,
     private systemSettingService: SystemSettingService,
@@ -131,6 +136,7 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
     this.loadProducts();
     this.loadCategories();
     this.loadStoreInfo();
+    this.loadCashRegisterStatus();
 
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
@@ -138,8 +144,36 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
       if (event.url === '/pos' || event.urlAfterRedirects === '/pos') {
         console.log('Navigated to POS, reloading products');
         this.loadProducts();
+        this.loadCashRegisterStatus();
       }
     });
+  }
+
+  loadCashRegisterStatus(): void {
+    this.cashRegisterService.getCurrentCashRegister().subscribe({
+      next: (response) => {
+        this.hasOpenCashRegister = response.cash_register?.status === 'open';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.hasOpenCashRegister = null;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  goToCashRegisters(): void {
+    this.router.navigate(['/cash-registers']);
+  }
+
+  private blockIfRegisterClosed(): boolean {
+    if (this.hasOpenCashRegister !== false) {
+      return false;
+    }
+    this.messageType = 'error';
+    this.errorMessage = this.closedRegisterMessage;
+    this.cdr.detectChanges();
+    return true;
   }
 
   ngOnDestroy(): void {
@@ -555,6 +589,9 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
       }, 3000);
       return;
     }
+    if (this.blockIfRegisterClosed()) {
+      return;
+    }
     this.errorMessage = '';
     this.showCheckout = true;
     this.cdr.detectChanges();
@@ -719,7 +756,7 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    if (this.cashPaymentError) {
+    if (this.cashPaymentError || this.blockIfRegisterClosed()) {
       return;
     }
 
@@ -794,6 +831,8 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
         this.messageType = 'error';
         this.errorMessage = error.error?.message || 'Error al procesar la venta';
         this.isProcessingSale = false;
+        // The register may have been closed from another session; refresh so the UI blocks further attempts.
+        this.loadCashRegisterStatus();
         this.cdr.detectChanges();
       },
     });

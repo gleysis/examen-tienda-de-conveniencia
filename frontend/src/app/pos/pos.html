@@ -35,7 +35,16 @@
         >{{ c.name }}</button>
       </div>
 
-      <div class="error-message" [class.success]="messageType === 'success'" *ngIf="errorMessage">{{ errorMessage | t }}</div>
+      <div class="register-closed-banner" *ngIf="hasOpenCashRegister === false" role="alert">
+        <span>{{ closedRegisterMessage | t }}</span>
+        <button type="button" (click)="goToCashRegisters()">{{ 'Ir a Cajas' | t }}</button>
+      </div>
+
+      <div
+        class="error-message"
+        [class.success]="messageType === 'success'"
+        *ngIf="errorMessage && !(hasOpenCashRegister === false && errorMessage === closedRegisterMessage)"
+      >{{ errorMessage | t }}</div>
 
       <div class="products-grid" *ngIf="!isLoading">
         <div
@@ -140,7 +149,7 @@
         </div>
       </div>
 
-      <button class="btn-cobrar" (click)="openCheckout()" [disabled]="cart.length === 0">
+      <button class="btn-cobrar" (click)="openCheckout()" [disabled]="cart.length === 0 || hasOpenCashRegister === false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="2" y="5" width="20" height="14" rx="2"></rect>
           <line x1="2" y1="10" x2="22" y2="10"></line>
@@ -250,7 +259,7 @@
         <button
           class="btn-confirm"
           (click)="processSale()"
-          [disabled]="isProcessingSale || !!cashPaymentError"
+          [disabled]="isProcessingSale || !!cashPaymentError || hasOpenCashRegister === false"
         >
           {{ isProcessingSale ? ('Procesando...' | t) : ('Confirmar pago' | t) }}
         </button>
