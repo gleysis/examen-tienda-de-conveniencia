@@ -15,6 +15,7 @@ class Sale extends Model
         'invoice_number',
         'user_id',
         'cash_register_id',
+        'cash_register_session_id',
         'subtotal',
         'tax',
         'discount',
@@ -39,6 +40,11 @@ class Sale extends Model
     public function cashRegister()
     {
         return $this->belongsTo(CashRegister::class);
+    }
+
+    public function cashRegisterSession()
+    {
+        return $this->belongsTo(CashRegisterSession::class, 'cash_register_session_id');
     }
 
     public function items()

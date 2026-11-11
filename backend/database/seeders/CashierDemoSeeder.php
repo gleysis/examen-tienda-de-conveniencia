@@ -29,16 +29,16 @@ class CashierDemoSeeder extends Seeder
             ]);
         });
 
-        $this->closedRegister($ana, 'Caja 1', -50, [
+        $this->closedSession($ana, 'Caja 1', -50, [
             ['type' => 'withdrawal', 'amount' => 500, 'reason' => 'Pago a proveedor'],
             ['type' => 'expense', 'amount' => 120, 'reason' => 'Compra de bolsas y papel'],
         ]);
 
-        $this->closedRegister($carlos, 'Caja 2', 25, [
+        $this->closedSession($carlos, 'Caja 2', 25, [
             ['type' => 'income', 'amount' => 200, 'reason' => 'Fondo adicional autorizado'],
         ]);
 
-        $this->openRegister($lucia, 'Caja 3', [
+        $this->openSession($lucia, 'Caja 3', [
             ['type' => 'withdrawal', 'amount' => 100, 'reason' => 'Retiro parcial de efectivo'],
         ]);
 
@@ -49,7 +49,7 @@ class CashierDemoSeeder extends Seeder
     /**
      * @param  array<int, array{type: string, amount: float, reason: string}>  $movements
      */
-    private function closedRegister(User $cashier, string $name, float $difference, array $movements): void
+    private function closedSession(User $cashier, string $name, float $difference, array $movements): void
     {
         $sales = Sale::where('user_id', $cashier->id)->where('status', 'completed')->get();
 
@@ -57,21 +57,31 @@ class CashierDemoSeeder extends Seeder
             'name' => $name,
             'location' => 'Mostrador principal',
             'user_id' => $cashier->id,
-            'status' => 'open',
+            'status' => 'closed',
+        ]);
+
+        $session = $register->sessions()->create([
+            'user_id' => $cashier->id,
+            'opened_by' => $cashier->id,
+            'closed_by' => $cashier->id,
             'opening_balance' => 1000,
-            'current_balance' => 1000,
+            'status' => 'closed',
             'opened_at' => $sales->min('created_at')?->subHour() ?? now()->subDay(),
         ]);
 
-        Sale::where('user_id', $cashier->id)->update(['cash_register_id' => $register->id]);
+        Sale::where('user_id', $cashier->id)->update([
+            'cash_register_id' => $register->id,
+            'cash_register_session_id' => $session->id,
+        ]);
 
         foreach ($movements as $movement) {
-            $register->movements()->create([
+            $session->movements()->create([
+                'cash_register_id' => $register->id,
                 'user_id' => $cashier->id,
                 'type' => $movement['type'],
                 'amount' => $movement['amount'],
                 'reason' => $movement['reason'],
-                'created_at' => $register->opened_at->copy()->addHours(4),
+                'created_at' => $session->opened_at->copy()->addHours(4),
             ]);
         }
 
@@ -79,39 +89,53 @@ class CashierDemoSeeder extends Seeder
         $cashOut = collect($movements)->where('type', '!=', 'income')->sum('amount');
         $cashIn = collect($movements)->where('type', 'income')->sum('amount');
         $expected = 1000 + $cashSales + $cashIn - $cashOut;
+        $closedAt = $sales->max('created_at')?->addHours(2) ?? now()->subDay();
 
-        $register->update([
-            'status' => 'closed',
+        $session->update([
             'cash_sales' => $cashSales,
             'card_sales' => (float) $sales->where('payment_method', 'card')->sum('total'),
             'transfer_sales' => (float) $sales->where('payment_method', 'transfer')->sum('total'),
             'total_sales' => (float) $sales->sum('total'),
-            'current_balance' => 1000 + $cashSales + $cashIn - $cashOut,
             'expected_closing' => $expected,
-            'actual_closing' => $expected + $difference,
-            'difference' => $difference,
-            'closed_at' => $sales->max('created_at')?->addHours(2) ?? now()->subDay(),
+            'closed_at' => $closedAt,
             'notes' => $difference < 0 ? 'Faltante reportado al administrador' : null,
+        ]);
+
+        $session->cashCount()->create([
+            'user_id' => $cashier->id,
+            'expected_amount' => $expected,
+            'counted_amount' => $expected + $difference,
+            'difference' => $difference,
+            'type' => 'closing',
+            'notes' => $difference < 0 ? 'Faltante reportado al administrador' : null,
+            'created_at' => $closedAt,
+            'updated_at' => $closedAt,
         ]);
     }
 
     /**
      * @param  array<int, array{type: string, amount: float, reason: string}>  $movements
      */
-    private function openRegister(User $cashier, string $name, array $movements): void
+    private function openSession(User $cashier, string $name, array $movements): void
     {
         $register = CashRegister::create([
             'name' => $name,
             'location' => 'Mostrador principal',
             'user_id' => $cashier->id,
             'status' => 'open',
+        ]);
+
+        $session = $register->sessions()->create([
+            'user_id' => $cashier->id,
+            'opened_by' => $cashier->id,
             'opening_balance' => 800,
-            'current_balance' => 800,
+            'status' => 'open',
             'opened_at' => now()->setTime(8, 0),
         ]);
 
         foreach ($movements as $movement) {
-            $register->movements()->create([
+            $session->movements()->create([
+                'cash_register_id' => $register->id,
                 'user_id' => $cashier->id,
                 'type' => $movement['type'],
                 'amount' => $movement['amount'],
@@ -122,9 +146,6 @@ class CashierDemoSeeder extends Seeder
         $cashOut = collect($movements)->where('type', '!=', 'income')->sum('amount');
         $cashIn = collect($movements)->where('type', 'income')->sum('amount');
 
-        $register->update([
-            'current_balance' => 800 + $cashIn - $cashOut,
-            'expected_closing' => 800 + $cashIn - $cashOut,
-        ]);
+        $session->update(['expected_closing' => 800 + $cashIn - $cashOut]);
     }
 }

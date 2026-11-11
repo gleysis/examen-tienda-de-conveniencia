@@ -25,7 +25,7 @@ class StoreCashRegisterRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'location' => 'nullable|string|max:255',
-            'opening_balance' => 'required|numeric|min:0',
+            'user_id' => 'nullable|exists:users,id',
         ];
     }
 }

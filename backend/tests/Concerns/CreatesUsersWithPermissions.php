@@ -13,10 +13,7 @@ trait CreatesUsersWithPermissions
         $role = Role::factory()->create();
 
         foreach ($permissionSlugs as $slug) {
-            $permission = Permission::factory()->create([
-                'slug' => $slug,
-                'name' => $slug,
-            ]);
+            $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
             $role->permissions()->attach($permission);
         }
 

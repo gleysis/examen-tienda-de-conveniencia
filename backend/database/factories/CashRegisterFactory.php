@@ -20,22 +20,26 @@ class CashRegisterFactory extends Factory
     {
         return [
             'name' => 'Caja '.fake()->unique()->numberBetween(1, 9999),
-            'opening_balance' => 0,
-            'current_balance' => 0,
-            'expected_closing' => 0,
             'status' => 'closed',
         ];
     }
 
+    /**
+     * The register is created already open, with a live session for the
+     * given cashier.
+     */
     public function openFor(User $user, float $openingBalance = 100.00): static
     {
         return $this->state(fn (): array => [
             'user_id' => $user->id,
             'status' => 'open',
+        ])->afterCreating(fn (CashRegister $register) => $register->sessions()->create([
+            'user_id' => $user->id,
+            'opened_by' => $user->id,
             'opening_balance' => $openingBalance,
-            'current_balance' => $openingBalance,
             'expected_closing' => $openingBalance,
+            'status' => 'open',
             'opened_at' => now(),
-        ]);
+        ]));
     }
 }

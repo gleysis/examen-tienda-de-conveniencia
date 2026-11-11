@@ -75,7 +75,7 @@ class SystemSettingTest extends TestCase
             ->pluck('can_edit', 'key');
 
         $this->assertSame(
-            ['store' => false, 'sales' => false, 'pos' => true, 'inventory' => false, 'system' => false],
+            ['store' => false, 'sales' => false, 'pos' => true, 'inventory' => false, 'printing' => false, 'system' => false],
             $groups->all()
         );
     }

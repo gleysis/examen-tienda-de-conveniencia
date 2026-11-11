@@ -26,6 +26,7 @@ class UpdateCashRegisterRequest extends FormRequest
             'name' => 'sometimes|string|max:255',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'user_id' => 'nullable|exists:users,id',
         ];
     }
 }

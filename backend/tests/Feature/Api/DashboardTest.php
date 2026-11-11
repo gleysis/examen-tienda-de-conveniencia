@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\CashRegister;
+use App\Models\CashRegisterSession;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ReturnRefund;
@@ -41,7 +41,7 @@ class DashboardTest extends TestCase
         Sale::factory()->create(['total' => 250, 'status' => 'completed', 'created_at' => now()]);
         Sale::factory()->create(['total' => 500, 'status' => 'cancelled', 'created_at' => now()]);
         Product::factory()->create(['stock' => 2, 'min_stock' => 5]);
-        CashRegister::create(['name' => 'Caja 1', 'status' => 'open', 'opened_at' => now()]);
+        CashRegisterSession::factory()->create(['status' => 'open', 'opened_at' => now()]);
 
         Sanctum::actingAs($user);
 
@@ -186,12 +186,13 @@ class DashboardTest extends TestCase
     public function test_alerts_hides_discrepancies_from_scoped_cashier(): void
     {
         $cashier = $this->userWithRole('cashier', ['reports.view', 'cash-registers.view']);
-        CashRegister::create([
-            'name' => 'Caja 1',
-            'status' => 'closed',
+        $session = CashRegisterSession::factory()->create(['status' => 'closed', 'closed_at' => now()]);
+        $session->cashCount()->create([
+            'expected_amount' => 150,
+            'counted_amount' => 100,
             'difference' => -50,
-            'closed_at' => now(),
         ]);
+        $session->cashRegister()->update(['status' => 'closed']);
         Product::factory()->create(['stock' => 0]);
         Product::factory()->create(['stock' => 3, 'expiry_date' => now()->addDays(10)]);
 
@@ -208,12 +209,13 @@ class DashboardTest extends TestCase
     public function test_alerts_shows_discrepancies_to_admin(): void
     {
         $admin = $this->userWithPermissions(['reports.view', 'cash-registers.view']);
-        CashRegister::create([
-            'name' => 'Caja 1',
-            'status' => 'closed',
+        $session = CashRegisterSession::factory()->create(['status' => 'closed', 'closed_at' => now()]);
+        $session->cashCount()->create([
+            'expected_amount' => 150,
+            'counted_amount' => 100,
             'difference' => -50,
-            'closed_at' => now(),
         ]);
+        $session->cashRegister()->update(['status' => 'closed']);
 
         Sanctum::actingAs($admin);
 

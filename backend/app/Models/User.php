@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'preferences'])]
@@ -100,5 +101,74 @@ class User extends Authenticatable
     public function inventoryMovements()
     {
         return $this->hasMany(InventoryMovement::class);
+    }
+
+    /**
+     * The cash registers permanently assigned to this cashier.
+     */
+    public function cashRegisters()
+    {
+        return $this->hasMany(CashRegister::class);
+    }
+
+    /**
+     * Every session this user has been responsible for.
+     */
+    public function cashRegisterSessions()
+    {
+        return $this->hasMany(CashRegisterSession::class);
+    }
+
+    /**
+     * The session this user is currently responsible for, if any.
+     */
+    public function openCashRegisterSession()
+    {
+        return $this->hasOne(CashRegisterSession::class)->where('status', 'open');
+    }
+
+    /**
+     * Every cashier owns a closed register from the moment the role is
+     * granted, so they can always start a shift without manager setup.
+     */
+    public function ensureCashRegister(): ?CashRegister
+    {
+        if (! $this->hasRole('cashier')) {
+            return null;
+        }
+
+        return DB::transaction(function (): CashRegister {
+            self::whereKey($this->id)->lockForUpdate()->first();
+
+            $register = $this->cashRegisters()->first();
+
+            if ($register) {
+                return $register;
+            }
+
+            $register = $this->cashRegisters()->create(['name' => 'Caja', 'status' => 'closed']);
+            $register->update(['name' => 'Caja '.$register->id]);
+
+            return $register;
+        });
+    }
+
+    /**
+     * Assigns a register when the cashier role is present in the given
+     * role ids; used after creating users or syncing their roles.
+     *
+     * @param  iterable<int, int>|null  $roleIds
+     */
+    public function assignCashRegisterIfCashier(?iterable $roleIds): void
+    {
+        if ($roleIds === null) {
+            return;
+        }
+
+        $cashierRoleId = Role::where('slug', 'cashier')->value('id');
+
+        if ($cashierRoleId !== null && in_array($cashierRoleId, collect($roleIds)->all())) {
+            $this->ensureCashRegister();
+        }
     }
 }

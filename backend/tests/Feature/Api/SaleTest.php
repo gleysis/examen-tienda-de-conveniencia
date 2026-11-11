@@ -247,8 +247,12 @@ class SaleTest extends TestCase
             'cash_register_id' => $otherRegister->id,
         ])->assertOk();
 
-        $this->assertDatabaseHas('sales', ['user_id' => $cashier->id, 'cash_register_id' => $ownRegister->id]);
-        $this->assertEquals(0, $otherRegister->fresh()->current_balance);
+        $this->assertDatabaseHas('sales', [
+            'user_id' => $cashier->id,
+            'cash_register_id' => $ownRegister->id,
+            'cash_register_session_id' => $ownRegister->openSession->id,
+        ]);
+        $this->assertEquals(0, $otherRegister->fresh()->openSession->expected_closing);
     }
 
     public function test_rejects_sale_when_cashier_has_no_open_register(): void

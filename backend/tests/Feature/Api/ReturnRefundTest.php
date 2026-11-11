@@ -146,15 +146,7 @@ class ReturnRefundTest extends TestCase
 
     private function openRegisterFor(User $user): CashRegister
     {
-        return CashRegister::create([
-            'name' => 'Caja 1',
-            'user_id' => $user->id,
-            'status' => 'open',
-            'opening_balance' => 100.00,
-            'current_balance' => 100.00,
-            'expected_closing' => 100.00,
-            'opened_at' => now(),
-        ]);
+        return CashRegister::factory()->openFor($user)->create();
     }
 
     public function test_processed_return_cannot_be_reopened_to_restock_twice(): void
@@ -181,11 +173,11 @@ class ReturnRefundTest extends TestCase
 
         $this->postJson("/api/returns/{$returnRefund->id}/process")->assertOk();
 
-        $register->refresh();
-        $this->assertEquals(42.50, $register->current_balance);
-        $this->assertEquals(42.50, $register->expected_closing);
+        $session = $register->fresh()->openSession;
+        $this->assertEquals(42.50, $session->expected_closing);
         $this->assertDatabaseHas('cash_movements', [
             'cash_register_id' => $register->id,
+            'cash_register_session_id' => $session->id,
             'type' => 'withdrawal',
             'amount' => 57.50,
         ]);

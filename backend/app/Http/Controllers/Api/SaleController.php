@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
 use App\Http\Resources\SaleResource;
-use App\Models\CashRegister;
+use App\Models\CashRegisterSession;
 use App\Models\Discount;
 use App\Models\InventoryMovement;
 use App\Models\Product;
@@ -47,9 +47,9 @@ class SaleController extends Controller
     public function store(StoreSaleRequest $request): array
     {
         return DB::transaction(function () use ($request) {
-            $cashRegister = CashRegister::where('user_id', auth()->id())->open()->lockForUpdate()->first();
+            $session = CashRegisterSession::where('user_id', auth()->id())->open()->lockForUpdate()->first();
 
-            if (! $cashRegister) {
+            if (! $session) {
                 abort(422, 'No tienes una caja abierta. Abre tu caja antes de registrar ventas.');
             }
 
@@ -126,7 +126,8 @@ class SaleController extends Controller
             $sale = Sale::create([
                 'invoice_number' => $invoiceNumber,
                 'user_id' => auth()->id(),
-                'cash_register_id' => $cashRegister->id,
+                'cash_register_id' => $session->cash_register_id,
+                'cash_register_session_id' => $session->id,
                 'subtotal' => $subtotal,
                 'tax' => $tax,
                 'discount' => $discount,
@@ -136,7 +137,7 @@ class SaleController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            $cashRegister->addSale($total, $request->payment_method);
+            $session->addSale($total, $request->payment_method);
 
             $notifyOutOfStock = (bool) SystemSettings::value('notify_out_of_stock', true);
             $outOfStockProducts = [];
@@ -228,9 +229,9 @@ class SaleController extends Controller
             ]);
         }
 
-        $register = CashRegister::lockForUpdate()->find($sale->cash_register_id);
-        if ($register?->status === 'open') {
-            $register->addSale(-$sale->total, $sale->payment_method);
+        $session = CashRegisterSession::lockForUpdate()->find($sale->cash_register_session_id);
+        if ($session?->status === 'open') {
+            $session->addSale(-$sale->total, $sale->payment_method);
         }
     }
 

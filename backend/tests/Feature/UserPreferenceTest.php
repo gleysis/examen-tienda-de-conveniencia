@@ -17,12 +17,16 @@ class UserPreferenceTest extends TestCase
         SystemSetting::set('theme', 'dark', 'string', 'system');
         Sanctum::actingAs($this->userWithPermissions([]));
 
-        $this->getJson('/api/me/preferences')
+        $response = $this->getJson('/api/me/preferences')
             ->assertOk()
             ->assertJsonPath('preferences.theme', 'dark')
             ->assertJsonPath('preferences.language', 'es')
-            ->assertJsonPath('group.can_edit', true)
-            ->assertJsonCount(5, 'group.fields');
+            ->assertJsonCount(2, 'groups');
+
+        $system = collect($response->json('groups'))->firstWhere('key', 'personal.system');
+        $this->assertNotNull($system);
+        $this->assertTrue($system['can_edit']);
+        $this->assertCount(5, $system['fields']);
     }
 
     public function test_user_preferences_override_system_defaults_only_for_that_user(): void
@@ -71,6 +75,54 @@ class UserPreferenceTest extends TestCase
 
         $this->assertSame(['language' => 'en'], $user->fresh()->preferences);
         $this->assertNull(SystemSetting::where('key', 'tax_rate')->first());
+    }
+
+    public function test_printer_group_is_personal_and_lists_admin_defined_printers(): void
+    {
+        SystemSetting::set('available_printers', "POS-80 Caja 1\nPOS-58 Cocina", 'string', 'printing');
+        Sanctum::actingAs($this->userWithPermissions([]));
+
+        $response = $this->getJson('/api/me/preferences')->assertOk();
+
+        $groups = collect($response->json('groups'));
+        $printer = $groups->firstWhere('key', 'personal.printing');
+
+        $this->assertNotNull($printer);
+        $this->assertSame('Impresora', $printer['label']);
+        $this->assertTrue($printer['can_edit']);
+        $this->assertCount(4, $printer['fields']);
+
+        $name = collect($printer['fields'])->firstWhere('key', 'printer_name');
+        $this->assertSame('select', $name['type']);
+        $this->assertSame([
+            '' => 'Impresora predeterminada del navegador',
+            'POS-80 Caja 1' => 'POS-80 Caja 1',
+            'POS-58 Cocina' => 'POS-58 Cocina',
+        ], $name['options']);
+    }
+
+    public function test_printer_preferences_are_saved_per_user(): void
+    {
+        $cashier = $this->userWithPermissions([]);
+        $other = $this->userWithPermissions([]);
+        Sanctum::actingAs($cashier);
+
+        $this->putJson('/api/me/preferences', [
+            'preferences' => ['printer_name' => 'POS-80 Caja 1', 'printer_copies' => 2],
+        ])
+            ->assertOk()
+            ->assertJsonPath('preferences.printer_name', 'POS-80 Caja 1')
+            ->assertJsonPath('preferences.printer_copies', 2);
+
+        $this->putJson('/api/me/preferences', ['preferences' => ['printer_copies' => 0]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('preferences.printer_copies');
+
+        Sanctum::actingAs($other);
+        $this->getJson('/api/me/preferences')
+            ->assertOk()
+            ->assertJsonPath('preferences.printer_name', '')
+            ->assertJsonPath('preferences.printer_copies', 1);
     }
 
     public function test_preferences_require_authentication(): void

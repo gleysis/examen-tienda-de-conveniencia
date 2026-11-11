@@ -136,6 +136,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/discounts/{discount}', [DiscountController::class, 'destroy'])->middleware('can:discounts.delete');
 
     Route::get('/cash-registers/current', [CashRegisterController::class, 'getCurrent'])->middleware('can:cash-registers.view');
+    Route::get('/cash-registers/sessions', [CashRegisterController::class, 'sessions'])->middleware('can:cash-registers.view');
+    Route::get('/cash-registers/sessions/{session}/movements', [CashRegisterController::class, 'sessionMovements'])->middleware('can:cash-registers.view');
+    Route::get('/cash-registers/responsible-users', [CashRegisterController::class, 'responsibleUsers'])->middleware('can:cash-registers.open');
     Route::post('/cash-registers/{cashRegister}/open', [CashRegisterController::class, 'open'])->middleware('can:cash-registers.open');
     Route::post('/cash-registers/{cashRegister}/close', [CashRegisterController::class, 'close'])->middleware('can:cash-registers.close');
     Route::get('/cash-registers', [CashRegisterController::class, 'index'])->middleware('can:cash-registers.view');

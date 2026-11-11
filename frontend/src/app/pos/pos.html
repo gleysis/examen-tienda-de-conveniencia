@@ -112,7 +112,7 @@
             </svg>
           </div>
           <div class="item-info">
-            <h4>{{ item.product.name }}</h4>
+            <h4 [title]="item.product.name">{{ item.product.name }}</h4>
             <span class="item-barcode">{{ item.product.barcode || item.product.sku }}</span>
             <span class="item-price">{{ currencySymbol }} {{ item.unit_price.toFixed(2) }} {{ 'c/u' | t }}</span>
           </div>

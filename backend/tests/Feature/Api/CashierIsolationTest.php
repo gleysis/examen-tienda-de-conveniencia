@@ -44,14 +44,8 @@ class CashierIsolationTest extends TestCase
 
     private function openRegisterFor(User $user, float $balance = 100.00): CashRegister
     {
-        return CashRegister::create([
+        return CashRegister::factory()->openFor($user, $balance)->create([
             'name' => 'Caja de '.$user->name,
-            'user_id' => $user->id,
-            'status' => 'open',
-            'opening_balance' => $balance,
-            'current_balance' => $balance,
-            'expected_closing' => $balance,
-            'opened_at' => now(),
         ]);
     }
 
@@ -107,7 +101,7 @@ class CashierIsolationTest extends TestCase
         ])->assertForbidden();
 
         $this->assertDatabaseCount('cash_movements', 0);
-        $this->assertEquals(100, $otherRegister->fresh()->current_balance);
+        $this->assertEquals(100, $otherRegister->fresh()->openSession->expected_closing);
     }
 
     public function test_cashier_cannot_close_or_view_another_register(): void
@@ -136,9 +130,22 @@ class CashierIsolationTest extends TestCase
         $closedRegister = CashRegister::create(['name' => 'Caja 2', 'status' => 'closed']);
         Sanctum::actingAs($cashier);
 
-        $this->postJson("/api/cash-registers/{$closedRegister->id}/open", ['opening_balance' => 0])->assertUnprocessable();
+        $this->postJson("/api/cash-registers/{$closedRegister->id}/open", ['opening_balance' => 0])->assertForbidden();
 
         $this->assertSame('closed', $closedRegister->fresh()->status);
+    }
+
+    public function test_cashier_cannot_open_a_second_own_register_while_one_is_open(): void
+    {
+        $cashier = $this->cashier();
+        $this->openRegisterFor($cashier);
+        $secondRegister = CashRegister::create(['name' => 'Caja 2', 'status' => 'closed', 'user_id' => $cashier->id]);
+        Sanctum::actingAs($cashier);
+
+        $this->postJson("/api/cash-registers/{$secondRegister->id}/open", ['opening_balance' => 0])->assertUnprocessable();
+
+        $this->assertSame('closed', $secondRegister->fresh()->status);
+        $this->assertSame(1, $cashier->cashRegisterSessions()->open()->count());
     }
 
     public function test_cancelling_sale_restores_stock_and_register_totals(): void
@@ -158,11 +165,10 @@ class CashierIsolationTest extends TestCase
         $this->putJson("/api/sales/{$saleId}", ['status' => 'cancelled'])->assertOk();
         $this->putJson("/api/sales/{$saleId}", ['status' => 'cancelled'])->assertOk();
 
-        $register->refresh();
         $this->assertSame(10, $product->fresh()->stock);
-        $this->assertEquals(100, $register->current_balance);
-        $this->assertEquals(0, $register->cash_sales);
-        $this->assertEquals(100, $register->expected_closing);
+        $session = $register->fresh()->openSession;
+        $this->assertEquals(0, $session->cash_sales);
+        $this->assertEquals(100, $session->expected_closing);
         $this->assertDatabaseHas('sales', ['id' => $saleId, 'status' => 'cancelled']);
     }
 

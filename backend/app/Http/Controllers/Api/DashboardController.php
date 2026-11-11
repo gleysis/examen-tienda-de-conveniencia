@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\CashRegister;
+use App\Models\CashRegisterSession;
 use App\Models\Product;
 use App\Models\ReturnRefund;
 use App\Models\Sale;
@@ -40,7 +40,7 @@ class DashboardController extends Controller
             ? Product::where('is_active', true)->where('stock', '<=', 0)->count()
             : 0;
 
-        $openRegistersQuery = CashRegister::query()->open();
+        $openRegistersQuery = CashRegisterSession::query()->open();
         if ($scopedCashier !== null) {
             $openRegistersQuery->where('user_id', $scopedCashier);
         }
@@ -63,17 +63,20 @@ class DashboardController extends Controller
         ];
 
         if ($scopedCashier !== null) {
-            $register = CashRegister::query()->open()->where('user_id', $scopedCashier)->first();
-            $response['my_register'] = $register ? [
-                'id' => $register->id,
-                'name' => $register->name,
-                'opened_at' => $register->opened_at,
-                'opening_balance' => (float) $register->opening_balance,
-                'current_balance' => (float) $register->current_balance,
-                'cash_sales' => (float) $register->cash_sales,
-                'card_sales' => (float) $register->card_sales,
-                'transfer_sales' => (float) $register->transfer_sales,
-                'total_sales' => (float) $register->total_sales,
+            $session = CashRegisterSession::query()->open()
+                ->where('user_id', $scopedCashier)
+                ->with('cashRegister:id,name')
+                ->first();
+            $response['my_register'] = $session ? [
+                'id' => $session->cash_register_id,
+                'name' => $session->cashRegister?->name,
+                'opened_at' => $session->opened_at,
+                'opening_balance' => (float) $session->opening_balance,
+                'current_balance' => (float) $session->expected_closing,
+                'cash_sales' => (float) $session->cash_sales,
+                'card_sales' => (float) $session->card_sales,
+                'transfer_sales' => (float) $session->transfer_sales,
+                'total_sales' => (float) $session->total_sales,
             ] : null;
         }
 
@@ -371,34 +374,36 @@ class DashboardController extends Controller
                 'days_expired' => (int) $product->expiry_date->diffInDays($today),
             ]);
 
-        $openRegistersQuery = CashRegister::query()->open()->with('user:id,name')->latest('opened_at');
+        $openRegistersQuery = CashRegisterSession::query()->open()
+            ->with(['user:id,name', 'cashRegister:id,name'])
+            ->latest('opened_at');
         if ($scopedCashier !== null) {
             $openRegistersQuery->where('user_id', $scopedCashier);
         }
-        $openRegisters = $openRegistersQuery->limit(15)->get()->map(fn (CashRegister $register) => [
-            'id' => $register->id,
-            'name' => $register->name,
-            'user' => $register->user?->name,
-            'opened_at' => $register->opened_at,
-            'total_sales' => (float) $register->total_sales,
+        $openRegisters = $openRegistersQuery->limit(15)->get()->map(fn (CashRegisterSession $session) => [
+            'id' => $session->id,
+            'name' => $session->cashRegister?->name,
+            'user' => $session->user?->name,
+            'opened_at' => $session->opened_at,
+            'total_sales' => (float) $session->total_sales,
         ]);
 
         $canViewDiscrepancies = $scopedCashier === null && $user->hasPermission('cash-registers.view');
         $discrepancies = $canViewDiscrepancies
-            ? CashRegister::closed()
-                ->with('user:id,name')
-                ->where('difference', '!=', 0)
+            ? CashRegisterSession::closed()
+                ->with(['user:id,name', 'cashRegister:id,name', 'cashCount'])
+                ->whereHas('cashCount', fn ($q) => $q->where('difference', '!=', 0))
                 ->latest('closed_at')
                 ->limit(15)
                 ->get()
-                ->map(fn (CashRegister $register) => [
-                    'id' => $register->id,
-                    'name' => $register->name,
-                    'user' => $register->user?->name,
-                    'closed_at' => $register->closed_at,
-                    'expected_closing' => (float) $register->expected_closing,
-                    'actual_closing' => (float) $register->actual_closing,
-                    'difference' => (float) $register->difference,
+                ->map(fn (CashRegisterSession $session) => [
+                    'id' => $session->id,
+                    'name' => $session->cashRegister?->name,
+                    'user' => $session->user?->name,
+                    'closed_at' => $session->closed_at,
+                    'expected_closing' => (float) $session->cashCount->expected_amount,
+                    'actual_closing' => (float) $session->cashCount->counted_amount,
+                    'difference' => (float) $session->cashCount->difference,
                 ])
             : collect();
 

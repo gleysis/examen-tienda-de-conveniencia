@@ -134,6 +134,7 @@ export class TicketPrinterService {
       })}`;
     const row = (label: string, value: string, cls = '') =>
       `<div class="row ${cls}"><span>${label}</span><span>${value}</span></div>`;
+    const meta = (label: string, value: string) => `<p><strong>${label}</strong> ${value}</p>`;
 
     const storeInfo = settings.showStoreInfo
       ? [
@@ -143,23 +144,25 @@ export class TicketPrinterService {
           settings.email && e(settings.email),
         ]
           .filter(Boolean)
-          .map((line) => `<div>${line}</div>`)
+          .map((line) => `<p>${line}</p>`)
           .join('')
       : '';
 
     const items = ticket.items
       .map(
         (item) => `
-        <div class="item">
-          <div class="item-name">${e(item.name)}</div>
-          ${row(`${item.quantity} x ${money(item.unit_price)}`, money(item.subtotal))}
-        </div>`
+        <tr>
+          <td>${e(String(item.quantity))}</td>
+          <td class="name">${e(item.name)}</td>
+          <td class="num">${money(item.unit_price)}</td>
+          <td class="num">${money(item.subtotal)}</td>
+        </tr>`
       )
       .join('');
 
     const isCash = ticket.payment_method === 'cash';
     const width = PRINTABLE_WIDTH_MM[settings.paperWidth];
-    const fontSize = settings.paperWidth === '58' ? 11 : 12;
+    const fontSize = settings.paperWidth === '58' ? 10 : 12;
 
     return `<!DOCTYPE html>
 <html>
@@ -179,42 +182,59 @@ export class TicketPrinterService {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .center { text-align: center; }
+    p { margin: 0; }
+    .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 1.5mm; margin-bottom: 1.5mm; }
     .logo { display: block; max-width: 70%; max-height: 18mm; margin: 0 auto 1.5mm; object-fit: contain; filter: grayscale(100%) contrast(1.2); }
-    .store-name { font-size: ${fontSize + 3}px; font-weight: bold; word-wrap: break-word; }
-    .store-info { font-size: ${fontSize - 1}px; word-wrap: break-word; }
-    .sep { border-top: 1px dashed #000; margin: 1.5mm 0; }
-    .row { display: flex; justify-content: space-between; gap: 2mm; }
+    .store-name { margin: 0 0 1mm; font-size: ${fontSize + 4}px; font-weight: bold; word-wrap: break-word; }
+    .header p { font-size: ${fontSize - 1}px; word-wrap: break-word; }
+    .meta { margin-bottom: 1.5mm; }
+    .meta p { margin: 0.5mm 0; word-wrap: break-word; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1.5mm; table-layout: auto; }
+    th, td { padding: 0.5mm 0.6mm; text-align: left; vertical-align: top; }
+    th:first-child, td:first-child { padding-left: 0; }
+    th:last-child, td:last-child { padding-right: 0; }
+    thead { border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
+    .name { width: 100%; word-break: break-word; }
+    .num { text-align: right; white-space: nowrap; }
+    .totals { border-top: 1px dashed #000; padding-top: 1.5mm; }
+    .row { display: flex; justify-content: space-between; gap: 2mm; margin: 0.5mm 0; }
     .row span:last-child { white-space: nowrap; text-align: right; }
-    .item { margin-bottom: 1mm; }
-    .item-name { font-weight: bold; word-wrap: break-word; }
-    .total { font-size: ${fontSize + 3}px; font-weight: bold; margin: 1mm 0; }
-    .footer { margin-top: 2mm; word-wrap: break-word; }
+    .total { font-weight: bold; font-size: ${fontSize + 2}px; border-top: 1px dashed #000; padding-top: 1mm; margin-top: 1mm; }
+    .footer { text-align: center; margin-top: 3mm; font-size: ${fontSize - 1}px; word-wrap: break-word; }
   </style>
 </head>
 <body>
-  <div class="center">
+  <div class="header">
     ${settings.showLogo && settings.logo ? `<img class="logo" src="${e(settings.logo)}" alt="">` : ''}
-    <div class="store-name">${e(settings.storeName)}</div>
-    <div class="store-info">${storeInfo}</div>
+    <p class="store-name">${e(settings.storeName)}</p>
+    ${storeInfo}
   </div>
-  <div class="sep"></div>
-  ${row(e(tr('Factura:')), e(ticket.invoice_number))}
-  ${row(e(tr('Fecha:')), e(ticket.date))}
-  ${ticket.cashier ? row(e(tr('Cajero:')), e(ticket.cashier)) : ''}
-  <div class="sep"></div>
-  ${items}
-  <div class="sep"></div>
-  ${row(e(tr('Subtotal:')), money(ticket.subtotal))}
-  ${ticket.discount > 0 ? row(e(tr('Descuento:')), `-${money(ticket.discount)}`) : ''}
-  ${ticket.tax > 0 ? row(e(tr('IVA:')), money(ticket.tax)) : ''}
-  ${row(e(tr('TOTAL')), money(ticket.total), 'total')}
-  <div class="sep"></div>
-  ${row(e(tr('Pago:')), e(tr(PAYMENT_LABELS[ticket.payment_method] || ticket.payment_method)))}
-  ${isCash && ticket.amount_received != null ? row(e(tr('Recibido:')), money(ticket.amount_received)) : ''}
-  ${isCash && ticket.change != null ? row(e(tr('Cambio:')), money(ticket.change)) : ''}
-  <div class="sep"></div>
-  <div class="center footer">${e(settings.footer)}</div>
+  <div class="meta">
+    ${meta(e(tr('Factura:')), e(ticket.invoice_number))}
+    ${meta(e(tr('Fecha:')), e(ticket.date))}
+    ${ticket.cashier ? meta(e(tr('Atendido por:')), e(ticket.cashier)) : ''}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>${e(tr('Cant'))}</th>
+        <th>${e(tr('Producto'))}</th>
+        <th class="num">${e(tr('Precio'))}</th>
+        <th class="num">${e(tr('Total'))}</th>
+      </tr>
+    </thead>
+    <tbody>${items}</tbody>
+  </table>
+  <div class="totals">
+    ${row(e(tr('Subtotal:')), money(ticket.subtotal))}
+    ${ticket.discount > 0 ? row(e(tr('Descuento:')), `-${money(ticket.discount)}`) : ''}
+    ${ticket.tax > 0 ? row(e(tr('IVA:')), `+${money(ticket.tax)}`) : ''}
+    ${row(e(tr('TOTAL')), money(ticket.total), 'total')}
+    ${row(e(tr('Pago:')), e(tr(PAYMENT_LABELS[ticket.payment_method] || ticket.payment_method)))}
+    ${isCash && ticket.amount_received != null ? row(e(tr('Recibido:')), money(ticket.amount_received)) : ''}
+    ${isCash && ticket.change != null ? row(e(tr('Cambio:')), money(ticket.change)) : ''}
+  </div>
+  <p class="footer">${e(settings.footer)}</p>
 </body>
 </html>`;
   }

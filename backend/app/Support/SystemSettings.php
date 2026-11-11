@@ -77,14 +77,34 @@ class SystemSettings
     }
 
     /**
+     * Groups whose fields every user can override with their own preferences,
+     * keyed by group key. Fields flagged "personal => false" are admin-only
+     * and stay out of the user's editable preferences.
+     *
+     * @return array<string, array{label: string, description: string, fields: array<string, array<string, mixed>>}>
+     */
+    public static function personalGroups(): array
+    {
+        return collect(self::groups())
+            ->filter(fn (array $group) => $group['personal'] ?? false)
+            ->map(fn (array $group) => [
+                'label' => $group['personal_label'] ?? $group['label'],
+                'description' => $group['personal_description'] ?? $group['description'] ?? '',
+                'fields' => collect($group['fields'])
+                    ->filter(fn (array $field) => $field['personal'] ?? true)
+                    ->all(),
+            ])
+            ->all();
+    }
+
+    /**
      * Fields that every user can override with their own preferences.
      *
      * @return array<string, array<string, mixed>>
      */
     public static function personalFields(): array
     {
-        return collect(self::groups())
-            ->filter(fn (array $group) => $group['personal'] ?? false)
+        return collect(self::personalGroups())
             ->flatMap(fn (array $group) => $group['fields'])
             ->all();
     }
@@ -131,7 +151,7 @@ class SystemSettings
                             'label' => $field['label'],
                             'type' => $field['type'],
                             'description' => $field['description'] ?? null,
-                            'options' => $field['options'] ?? null,
+                            'options' => self::fieldOptions($field),
                             'value' => $setting
                                 ? SystemSetting::castValue($setting->value, $setting->type)
                                 : $field['default'],
@@ -146,6 +166,29 @@ class SystemSettings
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Options for a select field: the static "options" list plus any names
+     * stored one-per-line in the setting referenced by "options_key".
+     *
+     * @param  array<string, mixed>  $field
+     * @return array<string, string>|null
+     */
+    public static function fieldOptions(array $field): ?array
+    {
+        $options = $field['options'] ?? null;
+
+        if (isset($field['options_key'])) {
+            $names = preg_split('/\r\n|\r|\n/', (string) self::value($field['options_key']), -1, PREG_SPLIT_NO_EMPTY);
+            $options = ($options ?? []) + collect($names)
+                ->map(fn (string $name) => trim($name))
+                ->filter()
+                ->mapWithKeys(fn (string $name) => [$name => $name])
+                ->all();
+        }
+
+        return $options;
     }
 
     /**

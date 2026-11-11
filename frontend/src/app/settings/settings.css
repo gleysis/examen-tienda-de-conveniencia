@@ -183,6 +183,39 @@
   resize: vertical;
 }
 
+.password-input {
+  position: relative;
+  max-width: 420px;
+}
+
+.password-input input {
+  padding-right: 42px;
+}
+
+.toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: flex;
+  padding: 4px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.toggle-password:hover,
+.toggle-password:focus-visible {
+  color: var(--color-primary);
+}
+
+.toggle-password svg {
+  width: 18px;
+  height: 18px;
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;

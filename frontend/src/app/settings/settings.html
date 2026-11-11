@@ -3,7 +3,7 @@
   [pageTitle]="hasSystemAccess ? 'Configuración del Sistema' : 'Configuración'"
   [pageSubtitle]="hasSystemAccess
     ? 'Administra tus preferencias y la configuración del negocio que te corresponde.'
-    : 'Personaliza el tema, el idioma y los formatos de tu usuario.'"
+    : 'Personaliza el tema, el idioma, los formatos y la impresora de tu usuario.'"
   (logout)="logout()"
 >
 <div class="settings-container">
@@ -63,15 +63,16 @@
           <label for="current_password">{{ 'Contraseña actual' | t }}</label>
           <small class="field-help">{{ 'Necesitamos tu contraseña actual para confirmar que eres tú.' | t }}</small>
         </div>
-        <div class="field-input">
+        <div class="field-input password-input">
           <input
-            type="password"
+            [type]="visiblePasswords.current ? 'text' : 'password'"
             id="current_password"
             name="current_password"
             [(ngModel)]="currentPassword"
             autocomplete="current-password"
             [disabled]="isSavingPassword"
           />
+          <ng-container *ngTemplateOutlet="passwordToggle; context: { $implicit: 'current' }"></ng-container>
         </div>
       </div>
 
@@ -80,15 +81,16 @@
           <label for="new_password">{{ 'Nueva contraseña' | t }}</label>
           <small class="field-help">{{ 'Debe ser distinta de la contraseña actual.' | t }}</small>
         </div>
-        <div class="field-input">
+        <div class="field-input password-input">
           <input
-            type="password"
+            [type]="visiblePasswords.new ? 'text' : 'password'"
             id="new_password"
             name="new_password"
             [(ngModel)]="newPassword"
             autocomplete="new-password"
             [disabled]="isSavingPassword"
           />
+          <ng-container *ngTemplateOutlet="passwordToggle; context: { $implicit: 'new' }"></ng-container>
         </div>
       </div>
 
@@ -96,17 +98,36 @@
         <div class="field-label">
           <label for="password_confirmation">{{ 'Confirmar nueva contraseña' | t }}</label>
         </div>
-        <div class="field-input">
+        <div class="field-input password-input">
           <input
-            type="password"
+            [type]="visiblePasswords.confirmation ? 'text' : 'password'"
             id="password_confirmation"
             name="password_confirmation"
             [(ngModel)]="passwordConfirmation"
             autocomplete="new-password"
             [disabled]="isSavingPassword"
           />
+          <ng-container *ngTemplateOutlet="passwordToggle; context: { $implicit: 'confirmation' }"></ng-container>
         </div>
       </div>
+
+      <ng-template #passwordToggle let-field>
+        <button
+          type="button"
+          class="toggle-password"
+          (click)="togglePasswordVisibility(field)"
+          [attr.aria-label]="(isPasswordVisible(field) ? 'Ocultar contraseña' : 'Mostrar contraseña') | t"
+          [attr.aria-pressed]="isPasswordVisible(field)"
+        >
+          <svg *ngIf="!isPasswordVisible(field)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg *ngIf="isPasswordVisible(field)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24M1 1l22 22"></path>
+          </svg>
+        </button>
+      </ng-template>
 
       <div class="form-actions">
         <span class="spacer"></span>

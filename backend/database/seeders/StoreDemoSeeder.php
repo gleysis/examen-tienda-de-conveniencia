@@ -114,6 +114,8 @@ class StoreDemoSeeder extends Seeder
             if ($role && ! $user->roles()->where('role_id', $role->id)->exists()) {
                 $user->roles()->attach($role->id);
             }
+
+            $user->ensureCashRegister();
         }
 
         // ---------- Datos de la tienda ----------

@@ -7,7 +7,7 @@ use App\Http\Requests\StoreReturnRefundRequest;
 use App\Http\Requests\UpdateReturnRefundRequest;
 use App\Http\Resources\ReturnRefundResource;
 use App\Models\CashMovement;
-use App\Models\CashRegister;
+use App\Models\CashRegisterSession;
 use App\Models\InventoryMovement;
 use App\Models\Product;
 use App\Models\ReturnRefund;
@@ -132,16 +132,17 @@ class ReturnRefundController extends Controller
             }
 
             if ($returnRefund->refund_method === 'cash') {
-                $register = CashRegister::where('user_id', auth()->id())->open()->first();
-                abort_unless($register, 422, 'Abre tu caja para entregar un reembolso en efectivo.');
+                $session = CashRegisterSession::where('user_id', auth()->id())->open()->lockForUpdate()->first();
+                abort_unless($session, 422, 'Abre tu caja para entregar un reembolso en efectivo.');
 
-                $movement = $register->movements()->create([
+                $movement = $session->movements()->create([
+                    'cash_register_id' => $session->cash_register_id,
                     'user_id' => auth()->id(),
                     'type' => CashMovement::TYPE_WITHDRAWAL,
                     'amount' => $returnRefund->refund_amount,
                     'reason' => "Reembolso devolución #{$returnRefund->return_number}",
                 ]);
-                $register->addMovement($movement->type, (float) $movement->amount);
+                $session->addMovement($movement->type, (float) $movement->amount);
             }
 
             $product = Product::findOrFail($returnRefund->product_id);

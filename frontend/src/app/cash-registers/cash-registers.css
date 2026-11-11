@@ -316,3 +316,71 @@
   font-size: 1rem;
   margin: 8px 0;
 }
+
+.current-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.current-actions,
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  padding: 6px 12px;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.actions-cell .btn-close-register {
+  padding: 6px 12px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.section-title {
+  margin: 24px 0 12px;
+  font-size: 1rem;
+}
+
+.cell-note {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-hint {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  margin: 0 0 12px;
+}
+
+.modal-content.modal-wide {
+  width: 760px;
+  max-height: 85vh;
+  overflow-y: auto;
+}

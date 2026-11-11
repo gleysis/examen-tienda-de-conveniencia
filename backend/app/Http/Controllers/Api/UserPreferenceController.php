@@ -46,32 +46,35 @@ class UserPreferenceController extends Controller
     }
 
     /**
-     * @return array{group: array<string, mixed>, preferences: array<string, mixed>}
+     * @return array{groups: array<int, array<string, mixed>>, preferences: array<string, mixed>}
      */
     private function payload(User $user): array
     {
         $preferences = SystemSettings::preferencesFor($user);
 
         return [
-            'group' => [
-                'key' => 'personal',
-                'label' => 'Mis preferencias',
-                'description' => 'Se aplican solo a tu usuario y en todos tus dispositivos.',
-                'can_edit' => true,
-                'fields' => collect(SystemSettings::personalFields())
-                    ->map(fn (array $field, string $key) => [
-                        'key' => $key,
-                        'label' => $field['label'],
-                        'type' => $field['type'],
-                        'description' => $field['description'] ?? null,
-                        'options' => $field['options'] ?? null,
-                        'value' => $preferences[$key],
-                        'default' => SystemSettings::value($key),
-                        'group' => 'personal',
-                    ])
-                    ->values()
-                    ->all(),
-            ],
+            'groups' => collect(SystemSettings::personalGroups())
+                ->map(fn (array $group, string $groupKey) => [
+                    'key' => "personal.{$groupKey}",
+                    'label' => $group['label'],
+                    'description' => $group['description'],
+                    'can_edit' => true,
+                    'fields' => collect($group['fields'])
+                        ->map(fn (array $field, string $key) => [
+                            'key' => $key,
+                            'label' => $field['label'],
+                            'type' => $field['type'],
+                            'description' => $field['description'] ?? null,
+                            'options' => SystemSettings::fieldOptions($field),
+                            'value' => $preferences[$key],
+                            'default' => SystemSettings::value($key),
+                            'group' => "personal.{$groupKey}",
+                        ])
+                        ->values()
+                        ->all(),
+                ])
+                ->values()
+                ->all(),
             'preferences' => $preferences,
         ];
     }

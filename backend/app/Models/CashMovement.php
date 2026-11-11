@@ -14,6 +14,7 @@ class CashMovement extends Model
 
     protected $fillable = [
         'cash_register_id',
+        'cash_register_session_id',
         'user_id',
         'type',
         'amount',
@@ -27,6 +28,11 @@ class CashMovement extends Model
     public function cashRegister()
     {
         return $this->belongsTo(CashRegister::class);
+    }
+
+    public function session()
+    {
+        return $this->belongsTo(CashRegisterSession::class, 'cash_register_session_id');
     }
 
     public function user()

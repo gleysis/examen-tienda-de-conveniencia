@@ -212,9 +212,65 @@ return [
             ],
         ],
 
+        'printing' => [
+            'label' => 'Impresión',
+            'personal_label' => 'Impresora',
+            'description' => 'Impresoras disponibles y valores de impresión predeterminados para los usuarios.',
+            'personal_description' => 'Elige la impresora y las opciones de impresión de tu usuario.',
+            'personal' => true,
+            'fields' => [
+                'available_printers' => [
+                    'label' => 'Impresoras disponibles',
+                    'type' => 'text',
+                    'default' => '',
+                    'is_public' => false,
+                    'personal' => false,
+                    'description' => 'Una impresora por línea, con el nombre exacto configurado en el sistema operativo.',
+                    'rules' => 'nullable|string|max:1000',
+                ],
+                'printer_name' => [
+                    'label' => 'Impresora',
+                    'type' => 'select',
+                    'default' => '',
+                    'is_public' => false,
+                    'options' => ['' => 'Impresora predeterminada del navegador'],
+                    'options_key' => 'available_printers',
+                    'description' => 'Impresora que usará este usuario para los recibos.',
+                    'rules' => 'nullable|string|max:100',
+                ],
+                'printer_paper_width' => [
+                    'label' => 'Ancho del papel',
+                    'type' => 'select',
+                    'default' => '80',
+                    'is_public' => false,
+                    'options' => ['58' => '58 mm', '80' => '80 mm'],
+                    'description' => 'Debe coincidir con el rollo térmico de tu impresora.',
+                    'rules' => 'required|in:58,80',
+                ],
+                'printer_copies' => [
+                    'label' => 'Copias del recibo',
+                    'type' => 'integer',
+                    'default' => 1,
+                    'is_public' => false,
+                    'description' => 'Cantidad de copias que se imprimen por cada venta.',
+                    'rules' => 'required|integer|min:1|max:5',
+                ],
+                'printer_auto_print' => [
+                    'label' => 'Impresión automática',
+                    'type' => 'boolean',
+                    'default' => false,
+                    'is_public' => false,
+                    'description' => 'Imprime el recibo automáticamente al completar la venta.',
+                    'rules' => 'required|boolean',
+                ],
+            ],
+        ],
+
         'system' => [
             'label' => 'Preferencias del Sistema',
+            'personal_label' => 'Mis preferencias',
             'description' => 'Valores predeterminados para los usuarios que no han elegido sus propias preferencias.',
+            'personal_description' => 'Se aplican solo a tu usuario y en todos tus dispositivos.',
             'personal' => true,
             'fields' => [
                 'theme' => [

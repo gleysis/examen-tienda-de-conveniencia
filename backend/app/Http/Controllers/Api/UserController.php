@@ -35,6 +35,8 @@ class UserController extends Controller
             $user->roles()->attach($request->roles);
         }
 
+        $user->assignCashRegisterIfCashier($request->input('roles'));
+
         return [
             'user' => $user->load('roles', 'roles.permissions'),
             'message' => 'Usuario creado exitosamente',
@@ -67,6 +69,8 @@ class UserController extends Controller
         if ($request->has('roles')) {
             $user->roles()->sync($request->roles);
         }
+
+        $user->assignCashRegisterIfCashier($request->input('roles'));
 
         return [
             'user' => $user->load('roles', 'roles.permissions'),

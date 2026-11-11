@@ -1,12 +1,12 @@
 <app-layout [userName]="user?.name" pageTitle="Cajas Registradoras">
   <div class="registers-container">
     <div class="registers-header">
-      <ng-container *appHasPermission="'cash-registers.open'">
-        <button (click)="showAddForm()" class="btn-create" *ngIf="!currentRegister">
+      <ng-container *appHasPermission="'cash-registers.create'">
+        <button (click)="startCreate()" class="btn-create" *ngIf="isSupervisor">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 5v14 M5 12h14"></path>
           </svg>
-          {{ 'Abrir Caja' | t }}
+          {{ 'Nueva Caja' | t }}
         </button>
       </ng-container>
     </div>
@@ -15,41 +15,66 @@
       {{ errorMessage | t }}
     </div>
 
-    <!-- Caja abierta actual -->
+    <!-- Mi caja -->
     <div class="current-register" *ngIf="currentRegister">
       <div class="current-header">
-        <h3>{{ currentRegister.name }} {{ '— Abierta' | t }}</h3>
-        <button class="btn-close-register" (click)="startClose()" *appHasPermission="'cash-registers.close'">{{ 'Cerrar Caja' | t }}</button>
-      </div>
-      <p class="current-meta" *ngIf="currentRegister.opened_at">
-        {{ 'Abierta:' | t }} {{ currentRegister.opened_at | appDate:'datetime' }}
-        <span *ngIf="currentRegister.location"> · {{ currentRegister.location }}</span>
-      </p>
-      <div class="balance-grid">
-        <div class="balance-card">
-          <span class="balance-label">{{ 'Apertura' | t }}</span>
-          <span class="balance-value">{{ toNumber(currentRegister.opening_balance) | money }}</span>
-        </div>
-        <div class="balance-card">
-          <span class="balance-label">{{ 'Ventas efectivo' | t }}</span>
-          <span class="balance-value">{{ toNumber(currentRegister.cash_sales) | money }}</span>
-        </div>
-        <div class="balance-card">
-          <span class="balance-label">{{ 'Ventas tarjeta' | t }}</span>
-          <span class="balance-value">{{ toNumber(currentRegister.card_sales) | money }}</span>
-        </div>
-        <div class="balance-card">
-          <span class="balance-label">{{ 'Ventas transferencia' | t }}</span>
-          <span class="balance-value">{{ toNumber(currentRegister.transfer_sales) | money }}</span>
-        </div>
-        <div class="balance-card expected">
-          <span class="balance-label">{{ 'Esperado en caja' | t }}</span>
-          <span class="balance-value">{{ toNumber(currentRegister.expected_closing) | money }}</span>
+        <h3>
+          {{ currentRegister.name }}
+          <span class="status-badge" [class.open]="currentSession">
+            {{ currentSession ? ('Abierta' | t) : ('Cerrada' | t) }}
+          </span>
+        </h3>
+        <div class="current-actions">
+          <button class="btn-secondary" *ngIf="currentSession && canRecordMovement(currentRegister)"
+                  (click)="startMovement(currentRegister)">{{ 'Registrar movimiento' | t }}</button>
+          <button class="btn-close-register" *ngIf="currentSession && canClose(currentRegister)"
+                  (click)="startClose(currentRegister)">{{ 'Cerrar Caja' | t }}</button>
+          <button class="btn-reopen" *ngIf="!currentSession && canOpen(currentRegister)"
+                  (click)="startOpen(currentRegister)">{{ 'Abrir mi caja' | t }}</button>
         </div>
       </div>
+
+      <ng-container *ngIf="currentSession; else closedNotice">
+        <p class="current-meta">
+          {{ 'Abierta:' | t }} {{ currentSession.opened_at | appDate:'datetime' }}
+          <span *ngIf="currentSession.opened_by_user && currentSession.opened_by !== currentSession.user_id">
+            · {{ 'Abierta por' | t }} {{ currentSession.opened_by_user.name }}
+          </span>
+          <span *ngIf="currentRegister.location"> · {{ currentRegister.location }}</span>
+        </p>
+        <div class="balance-grid">
+          <div class="balance-card">
+            <span class="balance-label">{{ 'Fondo inicial' | t }}</span>
+            <span class="balance-value">{{ toNumber(currentSession.opening_balance) | money }}</span>
+          </div>
+          <div class="balance-card">
+            <span class="balance-label">{{ 'Ventas efectivo' | t }}</span>
+            <span class="balance-value">{{ toNumber(currentSession.cash_sales) | money }}</span>
+          </div>
+          <div class="balance-card">
+            <span class="balance-label">{{ 'Ventas tarjeta' | t }}</span>
+            <span class="balance-value">{{ toNumber(currentSession.card_sales) | money }}</span>
+          </div>
+          <div class="balance-card">
+            <span class="balance-label">{{ 'Ventas transferencia' | t }}</span>
+            <span class="balance-value">{{ toNumber(currentSession.transfer_sales) | money }}</span>
+          </div>
+          <div class="balance-card expected">
+            <span class="balance-label">{{ 'Esperado en caja' | t }}</span>
+            <span class="balance-value">{{ toNumber(currentSession.expected_closing) | money }}</span>
+          </div>
+        </div>
+      </ng-container>
+      <ng-template #closedNotice>
+        <p class="current-meta">
+          {{ 'Tu caja está cerrada. Ábrela con el fondo inicial o pide a un gerente que la abra para registrar ventas.' | t }}
+        </p>
+      </ng-template>
     </div>
 
-    <!-- Historial -->
+    <!-- Cajas -->
+    <h3 class="section-title">{{ isSupervisor ? ('Cajas' | t) : ('Mi caja asignada' | t) }}</h3>
+
     <div *ngIf="isLoading" class="loading">
       <div class="spinner"></div>
       <p>{{ 'Cargando cajas...' | t }}</p>
@@ -67,11 +92,11 @@
         <thead>
           <tr>
             <th>{{ 'Nombre' | t }}</th>
-            <th>{{ 'Cajero' | t }}</th>
-            <th>{{ 'Apertura' | t }}</th>
+            <th>{{ 'Asignada a' | t }}</th>
+            <th>{{ 'Responsable del turno' | t }}</th>
+            <th>{{ 'Abierta por' | t }}</th>
+            <th>{{ 'Fondo inicial' | t }}</th>
             <th>{{ 'Esperado' | t }}</th>
-            <th>{{ 'Contado' | t }}</th>
-            <th>{{ 'Diferencia' | t }}</th>
             <th>{{ 'Estado' | t }}</th>
             <th>{{ 'Acciones' | t }}</th>
           </tr>
@@ -80,26 +105,21 @@
           <tr *ngFor="let register of registers">
             <td>{{ register.name }}</td>
             <td>{{ register.user?.name || '—' }}</td>
-            <td>{{ toNumber(register.opening_balance) | money }}</td>
-            <td>{{ toNumber(register.expected_closing) | money }}</td>
-            <td>{{ register.actual_closing !== null ? (register.actual_closing | money) : '—' }}</td>
-            <td [class.negative]="register.difference !== null && toNumber(register.difference) < 0"
-                [class.positive]="register.difference !== null && toNumber(register.difference) > 0">
-              {{ register.difference !== null ? (register.difference | money) : '—' }}
-            </td>
+            <td>{{ register.current_session?.user?.name || '—' }}</td>
+            <td>{{ register.current_session?.opened_by_user?.name || '—' }}</td>
+            <td>{{ register.current_session ? (toNumber(register.current_session.opening_balance) | money) : '—' }}</td>
+            <td>{{ register.current_session ? (toNumber(register.current_session.expected_closing) | money) : '—' }}</td>
             <td>
               <span class="status-badge" [class.open]="register.status === 'open'">
                 {{ register.status === 'open' ? ('Abierta' | t) : ('Cerrada' | t) }}
               </span>
             </td>
-            <td>
-              <ng-container *appHasPermission="'cash-registers.open'">
-                <button *ngIf="register.status === 'closed'"
-                        class="btn-reopen"
-                        (click)="reopenRegister(register)">
-                  {{ 'Reabrir' | t }}
-                </button>
-              </ng-container>
+            <td class="actions-cell">
+              <button *ngIf="canOpen(register)" class="btn-reopen" (click)="startOpen(register)">{{ 'Abrir' | t }}</button>
+              <button *ngIf="canRecordMovement(register)" class="btn-secondary" (click)="startMovement(register)">{{ 'Movimiento' | t }}</button>
+              <button *ngIf="canClose(register)" class="btn-close-register" (click)="startClose(register)">
+                {{ register.current_session?.user_id === user?.id ? ('Cerrar' | t) : ('Cierre supervisado' | t) }}
+              </button>
             </td>
           </tr>
         </tbody>
@@ -112,54 +132,205 @@
       </div>
     </div>
 
-    <!-- Modal abrir caja -->
-    <div *ngIf="showOpenForm" class="modal-overlay" (click)="cancelOpenForm()">
+    <!-- Historial de sesiones -->
+    <h3 class="section-title">{{ 'Historial de turnos' | t }}</h3>
+    <div class="registers-table-container">
+      <div class="no-registers" *ngIf="sessions.length === 0">
+        <p>{{ 'Aún no hay turnos registrados' | t }}</p>
+      </div>
+      <table class="registers-table" *ngIf="sessions.length > 0">
+        <thead>
+          <tr>
+            <th>{{ 'Caja' | t }}</th>
+            <th>{{ 'Cajero' | t }}</th>
+            <th>{{ 'Apertura' | t }}</th>
+            <th>{{ 'Cierre' | t }}</th>
+            <th>{{ 'Fondo' | t }}</th>
+            <th>{{ 'Esperado' | t }}</th>
+            <th>{{ 'Contado' | t }}</th>
+            <th>{{ 'Diferencia' | t }}</th>
+            <th>{{ 'Estado' | t }}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of sessions">
+            <td>{{ s.cash_register?.name || '—' }}</td>
+            <td>{{ s.user?.name || '—' }}</td>
+            <td>
+              {{ s.opened_at | appDate:'datetime' }}
+              <small class="cell-note" *ngIf="s.opened_by_user && s.opened_by !== s.user_id">
+                {{ 'por' | t }} {{ s.opened_by_user.name }}
+              </small>
+            </td>
+            <td>
+              {{ s.closed_at ? (s.closed_at | appDate:'datetime') : '—' }}
+              <small class="cell-note" *ngIf="s.closed_by_user && s.closed_by !== s.user_id">
+                {{ 'supervisado por' | t }} {{ s.closed_by_user.name }}
+              </small>
+            </td>
+            <td>{{ toNumber(s.opening_balance) | money }}</td>
+            <td>{{ toNumber(s.cash_count?.expected_amount ?? s.expected_closing) | money }}</td>
+            <td>{{ s.cash_count ? (toNumber(s.cash_count.counted_amount) | money) : '—' }}</td>
+            <td [class.negative]="s.cash_count && toNumber(s.cash_count.difference) < 0"
+                [class.positive]="s.cash_count && toNumber(s.cash_count.difference) > 0">
+              <ng-container *ngIf="s.cash_count; else noCount">
+                {{ toNumber(s.cash_count.difference) | money }}
+                <small class="cell-note">
+                  {{ toNumber(s.cash_count.difference) === 0 ? ('Cuadrado' | t)
+                     : toNumber(s.cash_count.difference) < 0 ? ('Faltante' | t) : ('Sobrante' | t) }}
+                </small>
+              </ng-container>
+              <ng-template #noCount>—</ng-template>
+            </td>
+            <td>
+              <span class="status-badge" [class.open]="s.status === 'open'">
+                {{ s.status === 'open' ? ('Abierta' | t) : ('Cerrada' | t) }}
+              </span>
+            </td>
+            <td><button class="btn-link" (click)="viewMovements(s)">{{ 'Movimientos' | t }}</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination" *ngIf="sessionsMeta.last_page > 1">
+        <button (click)="goToSessionsPage(sessionsMeta.current_page - 1)" [disabled]="sessionsMeta.current_page === 1">{{ 'Anterior' | t }}</button>
+        <span>{{ 'Página' | t }} {{ sessionsMeta.current_page }} {{ 'de' | t }} {{ sessionsMeta.last_page }}</span>
+        <button (click)="goToSessionsPage(sessionsMeta.current_page + 1)" [disabled]="sessionsMeta.current_page === sessionsMeta.last_page">{{ 'Siguiente' | t }}</button>
+      </div>
+    </div>
+
+    <!-- Modal nueva caja -->
+    <div *ngIf="activeModal === 'create'" class="modal-overlay" (click)="closeModal()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>{{ 'Abrir Caja Registradora' | t }}</h2>
-          <button (click)="cancelOpenForm()" class="btn-close">✕</button>
+          <h2>{{ 'Nueva Caja Registradora' | t }}</h2>
+          <button (click)="closeModal()" class="btn-close">✕</button>
         </div>
-        <form (ngSubmit)="openRegister()">
+        <form (ngSubmit)="createRegister()">
           <div class="form-group">
             <label>{{ 'Nombre *' | t }}</label>
-            <input type="text" [(ngModel)]="openForm.name" name="name" required />
+            <input type="text" [(ngModel)]="createForm.name" name="name" required maxlength="255" />
           </div>
           <div class="form-group">
             <label>{{ 'Ubicación' | t }}</label>
-            <input type="text" [(ngModel)]="openForm.location" name="location" />
+            <input type="text" [(ngModel)]="createForm.location" name="location" maxlength="255" />
           </div>
           <div class="form-group">
-            <label>{{ 'Balance de apertura ($) *' | t }}</label>
+            <label>{{ 'Asignar a cajero' | t }}</label>
+            <select [(ngModel)]="createForm.user_id" name="user_id">
+              <option [ngValue]="null">{{ 'Sin asignar' | t }}</option>
+              <option *ngFor="let u of responsibleUsers" [ngValue]="u.id">{{ u.name }}</option>
+            </select>
+          </div>
+          <p class="form-hint">{{ 'La caja se crea cerrada y sin fondo; se abre un turno cuando se vaya a usar.' | t }}</p>
+          <div *ngIf="formError" class="error-message">{{ formError | t }}</div>
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" (click)="closeModal()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save" [disabled]="isSaving">{{ 'Crear Caja' | t }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal abrir caja -->
+    <div *ngIf="activeModal === 'open' && target" class="modal-overlay" (click)="closeModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ 'Abrir Caja —' | t }} {{ target.name }}</h2>
+          <button (click)="closeModal()" class="btn-close">✕</button>
+        </div>
+        <form (ngSubmit)="openRegister()">
+          <div class="form-group" *ngIf="isSupervisor">
+            <label>{{ 'Usuario responsable *' | t }}</label>
+            <select [(ngModel)]="openForm.user_id" name="user_id" required>
+              <option [ngValue]="null" disabled>{{ 'Selecciona un cajero' | t }}</option>
+              <option *ngFor="let u of responsibleUsers" [ngValue]="u.id" [disabled]="u.has_open_session">
+                {{ u.name }}{{ u.has_open_session ? ' — ' + ('ya tiene una caja abierta' | t) : '' }}
+              </option>
+              <option *ngIf="!isResponsibleListed(user?.id)" [ngValue]="user?.id">{{ user?.name }} ({{ 'yo' | t }})</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>{{ 'Fondo inicial ($) *' | t }}</label>
             <input type="number" [(ngModel)]="openForm.opening_balance" name="opening_balance"
                    step="0.01" min="0" required />
           </div>
+          <div *ngIf="formError" class="error-message">{{ formError | t }}</div>
           <div class="form-actions">
-            <button type="button" class="btn-cancel" (click)="cancelOpenForm()">{{ 'Cancelar' | t }}</button>
-            <button type="submit" class="btn-save">{{ 'Abrir Caja' | t }}</button>
+            <button type="button" class="btn-cancel" (click)="closeModal()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save"
+                    [disabled]="isSaving || openForm.opening_balance === null || (isSupervisor && !openForm.user_id)">
+              {{ 'Abrir Caja' | t }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal movimiento de efectivo -->
+    <div *ngIf="activeModal === 'movement' && target" class="modal-overlay" (click)="closeModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ 'Movimiento de efectivo —' | t }} {{ target.name }}</h2>
+          <button (click)="closeModal()" class="btn-close">✕</button>
+        </div>
+        <div class="closing-summary" *ngIf="targetSession">
+          <div class="closing-row">
+            <span>{{ 'Efectivo esperado actual:' | t }}</span>
+            <span>{{ toNumber(targetSession.expected_closing) | money }}</span>
+          </div>
+        </div>
+        <form (ngSubmit)="recordMovement()">
+          <div class="form-group">
+            <label>{{ 'Tipo *' | t }}</label>
+            <select [(ngModel)]="movementForm.type" name="type" required>
+              <option *ngFor="let type of movementTypes" [ngValue]="type.value">{{ type.label | t }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>{{ 'Monto ($) *' | t }}</label>
+            <input type="number" [(ngModel)]="movementForm.amount" name="amount" step="0.01" min="0.01" required />
+          </div>
+          <div class="form-group">
+            <label>{{ 'Motivo *' | t }}</label>
+            <input type="text" [(ngModel)]="movementForm.reason" name="reason" maxlength="255" required />
+          </div>
+          <div *ngIf="formError" class="error-message">{{ formError | t }}</div>
+          <div class="form-actions">
+            <button type="button" class="btn-cancel" (click)="closeModal()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save" [disabled]="isSaving">{{ 'Registrar' | t }}</button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Modal cerrar caja (arqueo) -->
-    <div *ngIf="showCloseForm && currentRegister" class="modal-overlay" (click)="cancelClose()">
+    <div *ngIf="activeModal === 'close' && target && targetSession" class="modal-overlay" (click)="closeModal()">
       <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>{{ 'Cierre de Caja —' | t }} {{ currentRegister.name }}</h2>
-          <button (click)="cancelClose()" class="btn-close">✕</button>
+          <h2>{{ 'Cierre de Caja —' | t }} {{ target.name }}</h2>
+          <button (click)="closeModal()" class="btn-close">✕</button>
         </div>
+        <p class="form-hint" *ngIf="isSupervisedClose">
+          {{ 'Cierre supervisado del turno de' | t }} <strong>{{ targetSession.user?.name }}</strong>
+        </p>
         <div class="closing-summary">
           <div class="closing-row">
-            <span>{{ 'Balance de apertura:' | t }}</span>
-            <span>{{ toNumber(currentRegister.opening_balance) | money }}</span>
+            <span>{{ 'Fondo inicial:' | t }}</span>
+            <span>{{ toNumber(targetSession.opening_balance) | money }}</span>
           </div>
           <div class="closing-row">
             <span>{{ 'Ventas en efectivo:' | t }}</span>
-            <span>{{ toNumber(currentRegister.cash_sales) | money }}</span>
+            <span>{{ toNumber(targetSession.cash_sales) | money }}</span>
+          </div>
+          <div class="closing-row">
+            <span>{{ 'Ingresos / retiros / egresos:' | t }}</span>
+            <span>{{ targetMovementsNet | money }}</span>
           </div>
           <div class="closing-row expected">
             <span>{{ 'Efectivo esperado:' | t }}</span>
-            <span>{{ toNumber(currentRegister.expected_closing) | money }}</span>
+            <span>{{ toNumber(targetSession.expected_closing) | money }}</span>
           </div>
         </div>
         <form (ngSubmit)="closeRegister()">
@@ -170,14 +341,54 @@
           </div>
           <div class="closing-row difference" *ngIf="closingDifference !== null"
                [class.negative]="closingDifference! < 0" [class.positive]="closingDifference! > 0">
-            <span>{{ 'Diferencia:' | t }}</span>
+            <span>
+              {{ closingDifference === 0 ? ('Cuadrado' | t) : closingDifference! < 0 ? ('Faltante:' | t) : ('Sobrante:' | t) }}
+            </span>
             <span>{{ closingDifference! | money }}</span>
           </div>
+          <div *ngIf="formError" class="error-message">{{ formError | t }}</div>
           <div class="form-actions">
-            <button type="button" class="btn-cancel" (click)="cancelClose()">{{ 'Cancelar' | t }}</button>
-            <button type="submit" class="btn-save" [disabled]="actualClosing === null">{{ 'Cerrar Caja' | t }}</button>
+            <button type="button" class="btn-cancel" (click)="closeModal()">{{ 'Cancelar' | t }}</button>
+            <button type="submit" class="btn-save" [disabled]="isSaving || actualClosing === null">{{ 'Cerrar Caja' | t }}</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal movimientos de un turno -->
+    <div *ngIf="activeModal === 'movements' && movementsSession" class="modal-overlay" (click)="closeModal()">
+      <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ 'Movimientos —' | t }} {{ movementsSession.cash_register?.name }} · {{ movementsSession.user?.name }}</h2>
+          <button (click)="closeModal()" class="btn-close">✕</button>
+        </div>
+        <div *ngIf="formError" class="error-message">{{ formError | t }}</div>
+        <div *ngIf="isLoadingMovements" class="loading"><div class="spinner"></div></div>
+        <p class="form-hint" *ngIf="!isLoadingMovements && sessionMovements.length === 0">
+          {{ 'Este turno no tiene movimientos de efectivo.' | t }}
+        </p>
+        <table class="registers-table" *ngIf="sessionMovements.length > 0">
+          <thead>
+            <tr>
+              <th>{{ 'Fecha' | t }}</th>
+              <th>{{ 'Usuario' | t }}</th>
+              <th>{{ 'Tipo' | t }}</th>
+              <th>{{ 'Monto' | t }}</th>
+              <th>{{ 'Motivo' | t }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of sessionMovements">
+              <td>{{ m.created_at | appDate:'datetime' }}</td>
+              <td>{{ m.user?.name || '—' }}</td>
+              <td>{{ movementLabel(m.type) | t }}</td>
+              <td [class.positive]="m.type === 'income'" [class.negative]="m.type !== 'income'">
+                {{ m.type === 'income' ? '+' : '-' }}{{ toNumber(m.amount) | money }}
+              </td>
+              <td>{{ m.reason }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

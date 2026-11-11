@@ -152,7 +152,8 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
   loadCashRegisterStatus(): void {
     this.cashRegisterService.getCurrentCashRegister().subscribe({
       next: (response) => {
-        this.hasOpenCashRegister = response.cash_register?.status === 'open';
+        const session = response.cash_register?.current_session;
+        this.hasOpenCashRegister = session?.status === 'open' && session.user_id === this.user?.id;
         this.cdr.detectChanges();
       },
       error: () => {
@@ -160,6 +161,12 @@ export class Pos implements OnInit, OnDestroy, AfterViewInit {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  /** A manager may open or close this cashier's drawer from another device. */
+  @HostListener('window:focus')
+  onWindowFocus(): void {
+    this.loadCashRegisterStatus();
   }
 
   goToCashRegisters(): void {

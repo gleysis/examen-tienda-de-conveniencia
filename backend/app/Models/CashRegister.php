@@ -3,8 +3,12 @@
 namespace App\Models;
 
 use Database\Factories\CashRegisterFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CashRegister extends Model
 {
@@ -15,119 +19,68 @@ class CashRegister extends Model
         'name',
         'location',
         'user_id',
-        'opening_balance',
-        'current_balance',
-        'cash_sales',
-        'card_sales',
-        'transfer_sales',
-        'total_sales',
-        'expected_closing',
-        'actual_closing',
-        'difference',
         'status',
-        'opened_at',
-        'closed_at',
         'notes',
     ];
 
-    protected $casts = [
-        'opening_balance' => 'float',
-        'current_balance' => 'float',
-        'cash_sales' => 'float',
-        'card_sales' => 'float',
-        'transfer_sales' => 'float',
-        'total_sales' => 'float',
-        'expected_closing' => 'float',
-        'actual_closing' => 'float',
-        'difference' => 'float',
-        'opened_at' => 'datetime',
-        'closed_at' => 'datetime',
-    ];
-
-    public function user()
+    /**
+     * The cashier this drawer is permanently assigned to.
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function sales()
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(CashRegisterSession::class);
+    }
+
+    public function openSession(): HasOne
+    {
+        return $this->hasOne(CashRegisterSession::class)->where('status', 'open');
+    }
+
+    public function sales(): HasMany
     {
         return $this->hasMany(Sale::class);
     }
 
-    public function movements()
+    public function movements(): HasMany
     {
         return $this->hasMany(CashMovement::class);
     }
 
-    public function scopeOpen($query)
+    public function scopeOpen(Builder $query): Builder
     {
         return $query->where('status', 'open');
     }
 
-    public function scopeClosed($query)
+    public function scopeClosed(Builder $query): Builder
     {
         return $query->where('status', 'closed');
     }
 
-    public function open(float $openingBalance, int $userId): void
+    /**
+     * Opens a new session for the given responsible cashier. A drawer with
+     * no owner yet becomes assigned to that cashier.
+     */
+    public function openSessionFor(User $responsible, User $openedBy, float $openingBalance): CashRegisterSession
     {
+        $session = $this->sessions()->create([
+            'user_id' => $responsible->id,
+            'opened_by' => $openedBy->id,
+            'opening_balance' => $openingBalance,
+            'expected_closing' => $openingBalance,
+            'status' => 'open',
+            'opened_at' => now(),
+        ]);
+
         $this->update([
             'status' => 'open',
-            'opening_balance' => $openingBalance,
-            'current_balance' => $openingBalance,
-            'user_id' => $userId,
-            'opened_at' => now(),
-            'cash_sales' => 0,
-            'card_sales' => 0,
-            'transfer_sales' => 0,
-            'total_sales' => 0,
+            'user_id' => $this->user_id ?? $responsible->id,
         ]);
-    }
 
-    public function close(float $actualClosing): void
-    {
-        $difference = $actualClosing - $this->expected_closing;
-
-        $this->update([
-            'status' => 'closed',
-            'actual_closing' => $actualClosing,
-            'difference' => $difference,
-            'closed_at' => now(),
-        ]);
-    }
-
-    public function addSale(float $amount, string $paymentMethod): void
-    {
-        $this->increment('total_sales', $amount);
-
-        switch ($paymentMethod) {
-            case 'cash':
-                $this->increment('cash_sales', $amount);
-                $this->increment('current_balance', $amount);
-                break;
-            case 'card':
-                $this->increment('card_sales', $amount);
-                break;
-            case 'transfer':
-                $this->increment('transfer_sales', $amount);
-                break;
-        }
-
-        $this->update(['expected_closing' => $this->computedExpectedClosing()]);
-    }
-
-    public function addMovement(string $type, float $amount): void
-    {
-        $delta = $type === CashMovement::TYPE_INCOME ? $amount : -$amount;
-        $this->increment('current_balance', $delta);
-        $this->update(['expected_closing' => $this->computedExpectedClosing()]);
-    }
-
-    public function computedExpectedClosing(): float
-    {
-        $cashIn = (float) $this->movements()->where('type', CashMovement::TYPE_INCOME)->sum('amount');
-        $cashOut = (float) $this->movements()->whereIn('type', [CashMovement::TYPE_WITHDRAWAL, CashMovement::TYPE_EXPENSE])->sum('amount');
-
-        return $this->opening_balance + $this->cash_sales + $cashIn - $cashOut;
+        return $session;
     }
 }

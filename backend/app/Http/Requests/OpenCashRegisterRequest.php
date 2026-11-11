@@ -24,6 +24,7 @@ class OpenCashRegisterRequest extends FormRequest
     {
         return [
             'opening_balance' => 'required|numeric|min:0',
+            'user_id' => 'nullable|exists:users,id',
         ];
     }
 }

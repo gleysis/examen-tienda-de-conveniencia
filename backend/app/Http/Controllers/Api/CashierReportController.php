@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashMovement;
-use App\Models\CashRegister;
+use App\Models\CashRegisterSession;
 use App\Models\ReturnRefund;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -135,20 +135,30 @@ class CashierReportController extends Controller
     }
 
     /**
-     * 4. Turnos de cajero (cajas abiertas/cerradas).
+     * 4. Turnos de cajero (sesiones de caja abiertas/cerradas).
      */
     public function shifts(Request $request): array
     {
-        $query = CashRegister::with('user:id,name')->latest('opened_at');
+        $query = CashRegisterSession::with(['cashRegister:id,name', 'user:id,name', 'openedBy:id,name'])
+            ->latest('opened_at');
 
         $this->applyRegisterFilters($query, $request);
 
-        $shifts = $query->limit(200)->get()->map(function (CashRegister $register) {
-            $register->worked_minutes = $register->opened_at
-                ? max(0, (int) $register->opened_at->diffInMinutes($register->closed_at ?? now()))
-                : null;
-
-            return $register;
+        $shifts = $query->limit(200)->get()->map(function (CashRegisterSession $session) {
+            return [
+                'id' => $session->id,
+                'name' => $session->cashRegister?->name,
+                'user' => $session->user?->only(['id', 'name']),
+                'opened_by' => $session->openedBy?->name,
+                'opened_at' => $session->opened_at,
+                'closed_at' => $session->closed_at,
+                'opening_balance' => (float) $session->opening_balance,
+                'total_sales' => (float) $session->total_sales,
+                'status' => $session->status,
+                'worked_minutes' => $session->opened_at
+                    ? max(0, (int) $session->opened_at->diffInMinutes($session->closed_at ?? now()))
+                    : null,
+            ];
         });
 
         return [
@@ -167,17 +177,37 @@ class CashierReportController extends Controller
      */
     public function closures(Request $request): array
     {
-        $query = CashRegister::with('user:id,name')->closed()->latest('closed_at');
+        $query = CashRegisterSession::with([
+            'cashRegister:id,name',
+            'user:id,name',
+            'closedBy:id,name',
+            'cashCount',
+        ])
+            ->withSum(['movements as cash_in' => fn ($q) => $q->where('type', CashMovement::TYPE_INCOME)], 'amount')
+            ->withSum(['movements as cash_out' => fn ($q) => $q->whereIn('type', [CashMovement::TYPE_WITHDRAWAL, CashMovement::TYPE_EXPENSE])], 'amount')
+            ->closed()
+            ->latest('closed_at');
 
         $this->applyRegisterFilters($query, $request);
 
-        $closures = $query->limit(200)->get()->map(function (CashRegister $register) {
-            $register->cash_in = (float) $register->movements()->where('type', CashMovement::TYPE_INCOME)->sum('amount');
-            $register->cash_out = (float) $register->movements()
-                ->whereIn('type', [CashMovement::TYPE_WITHDRAWAL, CashMovement::TYPE_EXPENSE])
-                ->sum('amount');
+        $closures = $query->limit(200)->get()->map(function (CashRegisterSession $session) {
+            $count = $session->cashCount;
 
-            return $register;
+            return [
+                'id' => $session->id,
+                'name' => $session->cashRegister?->name,
+                'user' => $session->user?->only(['id', 'name']),
+                'opened_at' => $session->opened_at,
+                'closed_at' => $session->closed_at,
+                'closed_by' => $session->closedBy?->name,
+                'opening_balance' => (float) $session->opening_balance,
+                'cash_sales' => (float) $session->cash_sales,
+                'cash_in' => (float) $session->cash_in,
+                'cash_out' => (float) $session->cash_out,
+                'expected_closing' => $count ? (float) $count->expected_amount : (float) $session->expected_closing,
+                'actual_closing' => $count ? (float) $count->counted_amount : null,
+                'difference' => $count ? (float) $count->difference : null,
+            ];
         });
 
         return [
@@ -195,13 +225,26 @@ class CashierReportController extends Controller
      */
     public function discrepancies(Request $request): array
     {
-        $query = CashRegister::with('user:id,name')->closed()
-            ->where('difference', '!=', 0)
+        $query = CashRegisterSession::with(['cashRegister:id,name', 'user:id,name', 'closedBy:id,name', 'cashCount'])
+            ->closed()
+            ->whereHas('cashCount', fn ($q) => $q->where('difference', '!=', 0))
             ->latest('closed_at');
 
         $this->applyRegisterFilters($query, $request);
 
-        $discrepancies = $query->limit(200)->get();
+        $discrepancies = $query->limit(200)->get()->map(function (CashRegisterSession $session) {
+            return [
+                'id' => $session->id,
+                'name' => $session->cashRegister?->name,
+                'user' => $session->user?->only(['id', 'name']),
+                'closed_at' => $session->closed_at,
+                'closed_by' => $session->closedBy?->name,
+                'expected_closing' => (float) $session->cashCount->expected_amount,
+                'actual_closing' => (float) $session->cashCount->counted_amount,
+                'difference' => (float) $session->cashCount->difference,
+                'notes' => $session->cashCount->notes,
+            ];
+        });
 
         return [
             'discrepancies' => $discrepancies,
@@ -376,7 +419,7 @@ class CashierReportController extends Controller
         }
 
         $ids = Sale::query()->select('user_id')->distinct()->pluck('user_id')
-            ->merge(CashRegister::query()->select('user_id')->distinct()->pluck('user_id'))
+            ->merge(CashRegisterSession::query()->select('user_id')->distinct()->pluck('user_id'))
             ->unique()
             ->filter();
 

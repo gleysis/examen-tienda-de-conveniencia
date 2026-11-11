@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -75,7 +76,11 @@ class AuthController extends Controller
 
         $user->update(['password' => $request->validated('password')]);
 
-        $user->tokens()->whereKeyNot($user->currentAccessToken()->getKey())->delete();
+        $currentToken = $user->currentAccessToken();
+
+        $user->tokens()
+            ->when($currentToken instanceof PersonalAccessToken, fn ($query) => $query->whereKeyNot($currentToken->getKey()))
+            ->delete();
 
         return [
             'message' => 'Contraseña actualizada correctamente',

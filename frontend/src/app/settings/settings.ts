@@ -17,8 +17,10 @@ import { Layout } from '../layout/layout';
 import { APP_PIPES } from '../pipes';
 import { catchError, forkJoin, of } from 'rxjs';
 
-const PERSONAL_GROUP = 'personal';
+const PERSONAL_GROUP_PREFIX = 'personal.';
 const SECURITY_GROUP = 'security';
+
+type PasswordField = 'current' | 'new' | 'confirmation';
 
 @Component({
   imports: [CommonModule, FormsModule, Layout, ...APP_PIPES],
@@ -39,7 +41,7 @@ export class Settings implements OnInit {
 
   /** Values as last loaded/saved, used to detect unsaved changes per group. */
   private savedSnapshot: Record<string, string> = {};
-  private personalGroup: SettingGroup | null = null;
+  private personalGroups: SettingGroup[] = [];
   private systemGroups: SettingGroup[] = [];
 
   showHistory = false;
@@ -54,6 +56,7 @@ export class Settings implements OnInit {
   newPassword = '';
   passwordConfirmation = '';
   isSavingPassword = false;
+  visiblePasswords: Record<PasswordField, boolean> = { current: false, new: false, confirmation: false };
 
   constructor(
     private systemSettingService: SystemSettingService,
@@ -90,7 +93,7 @@ export class Settings implements OnInit {
 
     forkJoin([this.systemSettingService.getMyPreferences(), schema$]).subscribe({
       next: ([mine, schema]) => {
-        this.personalGroup = mine.group;
+        this.personalGroups = mine.groups;
         this.setGroups(schema.groups);
         if (!this.activeGroup && this.groups.length) {
           this.activeGroup = this.groups[0].key;
@@ -152,7 +155,7 @@ export class Settings implements OnInit {
     this.errorMessage = '';
     const successMessage = this.i18n.t('Cambios guardados en {section}', { section: this.i18n.t(group.label) });
 
-    if (group.key === PERSONAL_GROUP) {
+    if (this.isPersonalGroup(group.key)) {
       this.savePersonal(values, successMessage);
       return;
     }
@@ -191,11 +194,16 @@ export class Settings implements OnInit {
         this.notificationService.success(this.i18n.t(response.message));
         this.cdr.detectChanges();
       },
-      error: (error) => {
-        this.isSavingPassword = false;
-        this.handleError(error, 'Error al cambiar la contraseña');
-      },
+      error: (error) => this.handleError(error, 'Error al cambiar la contraseña'),
     });
+  }
+
+  isPasswordVisible(field: PasswordField): boolean {
+    return this.visiblePasswords[field];
+  }
+
+  togglePasswordVisibility(field: PasswordField): void {
+    this.visiblePasswords[field] = !this.visiblePasswords[field];
   }
 
   resetGroup(): void {
@@ -210,7 +218,7 @@ export class Settings implements OnInit {
     }
 
     this.isSaving = true;
-    if (group.key === PERSONAL_GROUP) {
+    if (this.isPersonalGroup(group.key)) {
       const defaults = Object.fromEntries(group.fields.map((field) => [field.key, null]));
       this.savePersonal(defaults, this.i18n.t('Valores predeterminados restablecidos'));
       return;
@@ -353,7 +361,7 @@ export class Settings implements OnInit {
   private savePersonal(preferences: Record<string, any>, successMessage: string): void {
     this.systemSettingService.updateMyPreferences(preferences).subscribe({
       next: (response) => {
-        this.personalGroup = response.group;
+        this.personalGroups = response.groups;
         this.setGroups(this.systemGroups);
         this.isSaving = false;
         this.preferencesService.apply(response.preferences);
@@ -376,11 +384,15 @@ export class Settings implements OnInit {
     }
   }
 
-  /** Replace the system groups, keeping the personal group as the first tab. */
+  /** Replace the system groups, keeping the personal groups as the first tabs. */
   private setGroups(systemGroups: SettingGroup[]): void {
     this.systemGroups = systemGroups;
-    this.groups = this.personalGroup ? [this.personalGroup, ...systemGroups] : systemGroups;
+    this.groups = [...this.personalGroups, ...systemGroups];
     this.savedSnapshot = Object.fromEntries(this.groups.map((group) => [group.key, this.serialize(group)]));
+  }
+
+  private isPersonalGroup(key: string): boolean {
+    return key.startsWith(PERSONAL_GROUP_PREFIX);
   }
 
   private serialize(group: SettingGroup): string {
@@ -414,11 +426,13 @@ export class Settings implements OnInit {
     this.currentPassword = '';
     this.newPassword = '';
     this.passwordConfirmation = '';
+    this.visiblePasswords = { current: false, new: false, confirmation: false };
   }
 
   private handleError(error: any, fallback: string): void {
     console.error(fallback, error);
     this.isSaving = false;
+    this.isSavingPassword = false;
     const errors = error.error?.errors;
     this.errorMessage = errors
       ? (Object.values(errors).flat() as string[]).join(' ')

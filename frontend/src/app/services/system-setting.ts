@@ -63,7 +63,7 @@ export interface SettingGroup {
 }
 
 export interface MyPreferencesResponse {
-  group: SettingGroup;
+  groups: SettingGroup[];
   preferences: Record<string, any>;
   message?: string;
 }
